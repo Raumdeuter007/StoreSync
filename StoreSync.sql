@@ -1,0 +1,181 @@
+
+CREATE DATABASE InventoryManagementSystem;
+
+USE InventoryManagementSystem;
+
+/*User Accounts and Access */
+
+/*lookup Table for Roles */
+CREATE TABLE Roles(                
+	roleID INT IDENTITY(1,1),
+	roleName VARCHAR(100)
+);
+
+ALTER TABLE Roles ADD PRIMARY KEY (roleID);
+INSERT INTO Roles VALUES
+('Business Owner'), ('Store Manager');
+
+
+CREATE TABLE Users(
+	userID INT IDENTITY(1,1),
+	name VARCHAR(255) NOT NULL,
+	email VARCHAR(255) UNIQUE NOT NULL,
+	username VARCHAR(255) UNIQUE NOT NULL,
+	password VARCHAR(255) NOT NULL,
+	roleID INT,
+	assignedStore INT DEFAULT(NULL)
+);
+
+ALTER TABLE Users ADD CONSTRAINT PK_Users PRIMARY KEY (userID);
+
+
+/*Business Management for Owners  */
+
+/*Business*/
+CREATE TABLE Business(
+	BusinessID INT IDENTITY(1,1),
+	BusinessName VARCHAR(255) NOT NULL,
+	BusinessAddress VARCHAR(255) NOT NULL,
+	OwnerID INT UNIQUE NOT NULL
+);
+ALTER TABLE Business ADD CONSTRAINT PK_Business PRIMARY KEY (BusinessID);
+
+
+ 
+/* Store & Warehouse Information */
+CREATE TABLE Stores(
+	StoreID INT IDENTITY(1,1),
+	StoreName VARCHAR(255) NOT NULL,
+	BusinessID INT NOT NULL,
+	StoreAddress VARCHAR(255),
+	ManagerID INT UNIQUE NOT NULL	
+);
+ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
+
+
+/* BInventory Management */
+
+/* Product Details */
+CREATE TABLE Products(
+	ProductID INT IDENTITY(1,1),
+	ProductName VARCHAR(255) NOT NULL,
+	BusinessID INT NOT NULL,
+	Category VARCHAR(255) NOT NULL,
+	PricePerUnit FLOAT NOT NULL,
+	-- warehouseLocation VARCHAR(255)
+);
+
+ALTER TABLE Products ADD CONSTRAINT PK_Products PRIMARY KEY (ProductID);
+
+
+CREATE TABLE Inventory(
+	warehouseID INT NOT NULL,
+	ProductID INT NOT NULL,
+	stockQuantity INT NOT NULL DEFAULT(0)
+);
+
+ALTER TABLE Inventory ADD CONSTRAINT PK_Inventory PRIMARY KEY (warehouseID, ProductID);
+ 
+/*Stock Movement & Requests */
+
+CREATE TABLE RequestStatus(                /*lookup TABLE for status */
+	StatusID INT IDENTITY(1,1),
+	StatusName VARCHAR(255)
+);
+
+ALTER TABLE RequestStatus ADD PRIMARY KEY (StatusID);
+INSERT INTO RequestStatus VALUES
+('Pending'), ('Approved'), ('Rejected'), ('In Progress'), ('Completed');
+
+
+CREATE TABLE StockRequests(
+	RequestingStoreID INT NOT NULL,
+	ProductID INT NOT NULL,
+	RequestedQuantity INT NOT NULL,
+	ReqStatus INT DEFAULT 1,
+	request_date DATETIME DEFAULT GETDATE() NOT NULL,
+	approvedby INT DEFAULT NULL,
+	fullfillmentdate DATETIME DEFAULT NULL
+);
+
+ALTER TABLE StockRequests ADD CONSTRAINT PK_StockRequests PRIMARY KEY (RequestingStoreID, ProductID, request_date);
+
+/* Notifications & Alerts */
+
+CREATE TABLE NotificationType(                /*lookup table for NotificationType */
+	notificationID INT IDENTITY(1,1),
+	nType VARCHAR(100)
+);
+ALTER TABLE NotificationType ADD PRIMARY KEY (notificationID);
+INSERT INTO NotificationType VALUES
+('Low Stock'),  ('Restock Request'), ('System Alert');
+
+
+CREATE TABLE read_status(                /*lookup TABLE for read_status */
+	StatusID INT IDENTITY(1,1),
+	StatusName VARCHAR(100)
+);
+
+ALTER TABLE read_status ADD PRIMARY KEY (StatusID);
+INSERT INTO read_status VALUES
+('Unread'), ('Read');
+
+CREATE TABLE Notifications(
+	NotificationID INT IDENTITY(1,1),
+	RecipientUserID INT NOT NULL,
+	n_Type INT DEFAULT 1,
+	Content text NOT NULL,
+	created_at DATETIME DEFAULT GETDATE(),
+	ReadStatus INT DEFAULT 1
+);
+
+ALTER TABLE Notifications ADD CONSTRAINT PK_Notifications PRIMARY KEY (NotificationID);
+
+ALTER TABLE Users ADD CONSTRAINT FK_Users FOREIGN KEY (roleID) REFERENCES Roles(roleID);
+ALTER TABLE Users ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID);
+ALTER TABLE Users ADD CONSTRAINT Ch_uemail CHECK (email LIKE '%@%');
+
+ALTER TABLE Business ADD CONSTRAINT FK_Business FOREIGN KEY (OwnerID) REFERENCES Users(UserID);
+
+ALTER TABLE Stores ADD CONSTRAINT FK_Stores1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
+ALTER TABLE Stores ADD CONSTRAINT FK_Stores2 FOREIGN KEY (ManagerID) REFERENCES Users(UserID);
+
+ALTER TABLE Products ADD CONSTRAINT FK_Products1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
+ALTER TABLE Products ADD CONSTRAINT Ch_price CHECK (priceperunit > 0);
+
+ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory1 FOREIGN KEY (warehouseID) REFERENCES Stores(StoreID);
+ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID);
+ALTER TABLE Inventory ADD CONSTRAINT Ch_quantity CHECK (stockQuantity >= 0);
+
+ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests1 FOREIGN KEY (RequestingStoreID) REFERENCES Stores(StoreID);
+ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID);
+ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests3 FOREIGN KEY (ReqStatus) REFERENCES RequestStatus(StatusID);
+ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests4 FOREIGN KEY (approvedby) REFERENCES Users(UserID);
+ALTER TABLE StockRequests ADD CONSTRAINT Ch_Rquantity CHECK (RequestedQuantity > 0);
+
+ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications1 FOREIGN KEY (RecipientUserID) REFERENCES Users(UserID);
+ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications2 FOREIGN KEY (n_Type) REFERENCES NotificationType(notificationID);
+ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications3 FOREIGN KEY (ReadStatus) REFERENCES read_status(StatusID);
+
+
+select * from Users;
+select * from Business;
+select * from Stores; 
+select * from Products;
+select * from Inventory;
+select * from StockRequests;
+select * from Notifications;
+
+select * from Roles;
+select * from read_status;
+select * from NotificationType;
+
+--select ao.name,ao.type_desc,delete_referential_action_desc,*
+--from sys.foreign_keys fk 
+--inner join sys.all_objects ao 
+--on fk.parent_object_id = ao.object_id
+
+--SELECT *
+--FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+--WHERE TABLE_NAME = 'Users'
+--AND CONSTRAINT_TYPE = 'FOREIGN KEY';
