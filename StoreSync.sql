@@ -1,4 +1,3 @@
-
 CREATE DATABASE InventoryManagementSystem;
 
 USE InventoryManagementSystem;
@@ -22,12 +21,11 @@ CREATE TABLE Users(
 	email VARCHAR(255) UNIQUE NOT NULL,
 	username VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255) NOT NULL,
-	roleID INT,
+	roleID INT NOT NULL,
 	assignedStore INT DEFAULT(NULL)
 );
 
 ALTER TABLE Users ADD CONSTRAINT PK_Users PRIMARY KEY (userID);
-
 
 /*Business Management for Owners  */
 
@@ -39,7 +37,6 @@ CREATE TABLE Business(
 	OwnerID INT UNIQUE NOT NULL
 );
 ALTER TABLE Business ADD CONSTRAINT PK_Business PRIMARY KEY (BusinessID);
-
 
  
 /* Store & Warehouse Information */
@@ -179,3 +176,50 @@ select * from NotificationType;
 --FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
 --WHERE TABLE_NAME = 'Users'
 --AND CONSTRAINT_TYPE = 'FOREIGN KEY';
+
+
+-- Queries For Implementation:
+-- INSERTION  QUERIES
+
+
+-- SELECTION QUERIES
+--  1. Verify Username and Password, return user details
+
+--  2. Get Business details if Owner
+
+--  3. Get stores/warehouses of the Business (for Owner)
+
+--  4. Get store details for manager
+
+--  5. Get Inventory Stock Details for Stores
+
+--  6. Get All Stock Requests for a Store (may be from manager or owner)
+
+--  7. Get Stock Requests that have not been resolved (pending), sort by request date.
+
+--  8. Get Stock Requests for all stores (Owner)
+
+--  9. Get Notifications for a certain store.
+
+-- 10. Retrieve the current stock levels of all products in a specific warehouse.
+
+-- 11. Get a list of all products that are below the reorder level (minimum 5) in a given warehouse.
+
+-- 12. Retrieve the total stock of a particular product across all warehouses.
+
+-- 13. Get the stock details of a specific product in a specific warehouse.
+
+-- 15. Get the details of a specific stock request, including requested product, quantity, and status.
+
+-- 16. Fetch all completed stock requests along with fulfillment dates for a given time period.
+
+-- 17. Get the total number of stock requests made by a specific store in the last month.
+
+-- 18. Retrieve the top 5 most requested products across all stores in the last 3 months.
+
+-- 19. Get a summary of stock movements (incoming & outgoing) for a specific warehouse.
+
+-- 20. Generate a report of all low-stock products grouped by warehouse for restocking decisions.
+
+-- DELETION QUERIES
+-- 
