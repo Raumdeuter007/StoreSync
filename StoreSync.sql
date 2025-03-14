@@ -1,10 +1,11 @@
---Lines before GO to ensure 
-Use master
-Drop database InventoryManagementSystem
-Go
 
---TODO: Attempt to create database only if it doesn't already exist
+--Use master
+--Drop database InventoryManagementSystem
+--Go
+
+--TODO: Attempt to create database only if it doesn't already exist  
 --TODO: Only attempt to create a table if already doesn't exist.
+
 CREATE DATABASE InventoryManagementSystem;
 USE InventoryManagementSystem;
 
@@ -14,7 +15,7 @@ USE InventoryManagementSystem;
 CREATE TABLE Roles(                
 	roleID INT IDENTITY(1,1),
 	roleName VARCHAR(100) NOT NULL UNIQUE    -- ADDED: 1)NOT NULL Contraint; 2)UNIQUE Contraint;
-);
+ )
 
 ALTER TABLE Roles ADD PRIMARY KEY (roleID);
 INSERT INTO Roles VALUES
@@ -38,7 +39,7 @@ ALTER TABLE Users ADD CONSTRAINT PK_Users PRIMARY KEY (userID);
 CREATE TABLE Business(
 	BusinessID INT IDENTITY(1,1),
 	BusinessName VARCHAR(255) NOT NULL,
-	BusinessAddress VARCHAR(255) NOT NULL,    --TODO: Rename this to HQAddress
+	HQAddress VARCHAR(255) NOT NULL,    -- Renamed 
 	OwnerID INT UNIQUE NOT NULL
 );
 ALTER TABLE Business ADD CONSTRAINT PK_Business PRIMARY KEY (BusinessID);
@@ -49,7 +50,7 @@ CREATE TABLE Stores(
 	StoreID INT IDENTITY(1,1),
 	StoreName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
-	StoreAddress VARCHAR(255),    -- TODO: add NOT NULL constraint
+	StoreAddress VARCHAR(255) NOT NULL,    -- NOT NULL constraint added
 	ManagerID INT UNIQUE NOT NULL	
 );
 ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
@@ -63,9 +64,10 @@ CREATE TABLE Products(
 	ProductName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
 	Category VARCHAR(255) NOT NULL,
-	PricePerUnit FLOAT NOT NULL,    -- TODO: change to DECIMAL(10,2)   -- has check of > 0
+	PricePerUnit DECIMAL(10,2) NOT NULL, -- DECIMAL(10,2) used --Precise fixed-point representation stores price to 2 decimal places with max 8 digits on the left of decimal point; has check of > 0
 	-- warehouseLocation VARCHAR(255)
 );
+
 
 ALTER TABLE Products ADD CONSTRAINT PK_Products PRIMARY KEY (ProductID);
 
@@ -134,7 +136,7 @@ CREATE TABLE Notifications(
 	NotificationID INT IDENTITY(1,1),
 	RecipientUserID INT NOT NULL,
 	n_Type INT DEFAULT 1,
-	Content text NOT NULL,              -- TODO: change to VARCHAR(MAX) --> TEXT datatype is deprecated SQL Server 2005 onwards
+	Content VARCHAR(MAX) NOT NULL,              -- changed to VARCHAR(MAX) --> TEXT datatype is deprecated SQL Server 2005 onwards.
 	created_at DATETIME DEFAULT GETDATE(),
 	ReadStatus INT DEFAULT 1
 );
