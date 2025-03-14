@@ -15,7 +15,7 @@ USE InventoryManagementSystem;
 CREATE TABLE Roles(                
 	roleID INT IDENTITY(1,1),
 	roleName VARCHAR(100) NOT NULL UNIQUE    -- ADDED: 1)NOT NULL Contraint; 2)UNIQUE Contraint;
- )
+ );
 
 ALTER TABLE Roles ADD PRIMARY KEY (roleID);
 INSERT INTO Roles VALUES
