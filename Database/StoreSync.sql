@@ -28,7 +28,8 @@ CREATE TABLE Users(
 	username VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255) NOT NULL,
 	roleID INT NOT NULL,
-	assignedStore INT DEFAULT(NULL)
+	assignedStore INT DEFAULT(NULL),
+	businessID INT DEFAULT(NULL)
 );
 
 ALTER TABLE Users ADD CONSTRAINT PK_Users PRIMARY KEY (userID);
@@ -71,7 +72,6 @@ CREATE TABLE Products(
 
 ALTER TABLE Products ADD CONSTRAINT PK_Products PRIMARY KEY (ProductID);
 
-
 CREATE TABLE Inventory(
 	warehouseID INT NOT NULL,
 	ProductID INT NOT NULL,
@@ -81,7 +81,6 @@ CREATE TABLE Inventory(
 ALTER TABLE Inventory ADD CONSTRAINT PK_Inventory PRIMARY KEY (warehouseID, ProductID);
  
 /*Stock Movement & Requests */
-
 
 CREATE TABLE RequestStatus(                /*lookup TABLE for status */
 	StatusID INT IDENTITY(1,1),
@@ -94,7 +93,6 @@ INSERT INTO RequestStatus VALUES
 ('Pending'), ('Approved'), ('Rejected'), ('In Progress'), ('Completed');
 
 select * from RequestStatus
-
 
 CREATE TABLE StockRequests(
 	RequestingStoreID INT NOT NULL,
@@ -117,10 +115,10 @@ CREATE TABLE NotificationType(                /*lookup table for NotificationTyp
 	nType VARCHAR(100)	NOT NULL UNIQUE		-- ADDED: 1)NOT NULL Contraint; 2)UNIQUE Contraint;
 	
 );
+
 ALTER TABLE NotificationType ADD PRIMARY KEY (notificationID);
 INSERT INTO NotificationType VALUES
 ('Low Stock'),  ('Restock Request'), ('System Alert');
-
 
 CREATE TABLE read_status(                /*lookup TABLE for read_status */
 	StatusID INT IDENTITY(1,1),
@@ -146,67 +144,43 @@ ALTER TABLE Notifications ADD CONSTRAINT PK_Notifications PRIMARY KEY (Notificat
 
 -- Alter table command Remains here to avoid Foriegn key dependency issues(Referenced table non-existent at the time of adding FK constraints)
 
--- TODO:Combine Constraints in One ALTER TABLE Per Table
-
---Constraints added to 'Users'
+-- Constraints added to 'Users'
 ALTER TABLE Users ADD CONSTRAINT FK_Users FOREIGN KEY (roleID) REFERENCES Roles(roleID);
 ALTER TABLE Users ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID);
+ALTER TABLE Users ADD CONSTRAINT FK_Users3 FOREIGN KEY (businessID) REFERENCES Business(businessID);
+-- To ensure that the owner does not have a stored assigned
+ALTER TABLE Users ADD CONSTRAINT Owner_Store CHECK(roleID != 1 OR assignedstore IS NULL);
+-- To ensure that the manager is assigned a store 
+ALTER TABLE Users ADD CONSTRAINT Mn_Store CHECK(roleID = 1 OR businessID IS NOT NULL);
 ALTER TABLE Users ADD CONSTRAINT Ch_uemail CHECK (email LIKE '%@%');
 
---Constraints added to 'Business'
+-- Constraints added to 'Business'
 ALTER TABLE Business ADD CONSTRAINT FK_Business FOREIGN KEY (OwnerID) REFERENCES Users(UserID);
 
---Constraints added to 'Stores'
+-- Constraints added to 'Stores'
 ALTER TABLE Stores ADD CONSTRAINT FK_Stores1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
 ALTER TABLE Stores ADD CONSTRAINT FK_Stores2 FOREIGN KEY (ManagerID) REFERENCES Users(UserID);
 
---Constraints added to 'Products'
+-- Constraints added to 'Products'
 ALTER TABLE Products ADD CONSTRAINT FK_Products1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
 ALTER TABLE Products ADD CONSTRAINT Ch_price CHECK (priceperunit > 0);
 
---Constraints added to 'Inventory'
+-- Constraints added to 'Inventory'
 ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory1 FOREIGN KEY (warehouseID) REFERENCES Stores(StoreID);
 ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID);
 ALTER TABLE Inventory ADD CONSTRAINT Ch_quantity CHECK (stockQuantity >= 0);
 
---Constraints added to 'StockRequests'
+-- Constraints added to 'StockRequests'
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests1 FOREIGN KEY (RequestingStoreID) REFERENCES Stores(StoreID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests3 FOREIGN KEY (ReqStatus) REFERENCES RequestStatus(StatusID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests4 FOREIGN KEY (approvedby) REFERENCES Users(UserID);
 ALTER TABLE StockRequests ADD CONSTRAINT Ch_Rquantity CHECK (RequestedQuantity > 0);
 
---Constraints added to 'Notifications'
+-- Constraints added to 'Notifications'
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications1 FOREIGN KEY (RecipientUserID) REFERENCES Users(UserID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications2 FOREIGN KEY (n_Type) REFERENCES NotificationType(notificationID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications3 FOREIGN KEY (ReadStatus) REFERENCES read_status(StatusID);
-
-
-select * from Users;
-select * from Business;
-select * from Stores; 
-select * from Products;
-select * from Inventory;
-select * from StockRequests;
-select * from Notifications;
-
-select * from Roles;
-select * from read_status;
-select * from NotificationType;
-
---select ao.name,ao.type_desc,delete_referential_action_desc,*
---from sys.foreign_keys fk 
---inner join sys.all_objects ao 
---on fk.parent_object_id = ao.object_id
-
---SELECT *
---FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
---WHERE TABLE_NAME = 'Users'
---AND CONSTRAINT_TYPE = 'FOREIGN KEY';
-
-
--- Queries For Implementation:
--- INSERTION  QUERIES
 
 -- User Accounts and Access
 SELECT * FROM Roles;
@@ -229,6 +203,35 @@ SELECT * FROM NotificationType;
 SELECT * FROM read_status;
 SELECT * FROM Notifications;
 
+--select ao.name,ao.type_desc,delete_referential_action_desc,*
+--from sys.foreign_keys fk 
+--inner join sys.all_objects ao 
+--on fk.parent_object_id = ao.object_id
+
+--SELECT *
+--FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+--WHERE TABLE_NAME = 'Users'
+--AND CONSTRAINT_TYPE = 'FOREIGN KEY';
+
+
+-- Queries For Implementation (Procedures for quick execution):
+
+-- INSERTION  QUERIES
+-- 1. Insert Owner and Business Together (Special Care must be taken for insertion)
+
+-- 2. Insert Manager
+
+-- 3. Insert Store
+
+-- 4. Insert Product
+
+-- 5. Insert Store / Warehouse
+
+-- 6. Insert Product in a Warehouse
+
+-- 7. Insert Stock Request
+
+-- 8. Insert Notification
 
 
 -- SELECTION QUERIES
@@ -273,7 +276,10 @@ SELECT * FROM Notifications;
 -- DELETION QUERIES
 -- 
 
---Following should fail due to the added unique constraint
+-- UPDATE QUERIES
+-- 
+
+-- Following should fail due to the added unique constraint
 INSERT INTO Roles (roleName) VALUES
 ('Business Owner'), ('Store Manager');
 GO
