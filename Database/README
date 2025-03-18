@@ -16,4 +16,3 @@
 
 
 ![Database Diagram](Inventory_Schema_Diagram.png)
-

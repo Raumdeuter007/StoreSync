@@ -1,44 +1,46 @@
---Lines before GO to ensure 
+
 Use master
 Drop database InventoryManagementSystem
 Go
 
---TODO: Attempt to create database only if it doesn't already exist
+--TODO: Attempt to create database only if it doesn't already exist  
 --TODO: Only attempt to create a table if already doesn't exist.
+
 CREATE DATABASE InventoryManagementSystem;
 USE InventoryManagementSystem;
 
 /*User Accounts and Access */
 
-/*lookup Table for Roles */
-CREATE TABLE Roles(                
-	roleID INT IDENTITY(1,1),
-	roleName VARCHAR(100) NOT NULL UNIQUE    -- ADDED: 1)NOT NULL Contraint; 2)UNIQUE Contraint;
-);
-
-ALTER TABLE Roles ADD PRIMARY KEY (roleID);
-INSERT INTO Roles VALUES
-('Business Owner'), ('Store Manager');
-
-CREATE TABLE Users(
-	userID INT IDENTITY(1,1),
+CREATE TABLE Owners(
+	ownerID INT IDENTITY(1,1),
 	name VARCHAR(255) NOT NULL,
 	email VARCHAR(255) UNIQUE NOT NULL,
 	username VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255) NOT NULL,
-	roleID INT NOT NULL,
+);
+
+ALTER TABLE Owners ADD CONSTRAINT PK_Owners PRIMARY KEY (ownerID);
+
+
+/* Manager Table */
+CREATE TABLE Managers(
+	managerID INT IDENTITY(1,1),
+	name VARCHAR(255) NOT NULL,
+	email VARCHAR(255) UNIQUE NOT NULL,
+	username VARCHAR(255) UNIQUE NOT NULL,
+	password VARCHAR(255) NOT NULL,
+	businessID INT NOT NULL,
 	assignedStore INT DEFAULT(NULL)
 );
 
-ALTER TABLE Users ADD CONSTRAINT PK_Users PRIMARY KEY (userID);
-
+ALTER TABLE Managers ADD CONSTRAINT PK_Man PRIMARY KEY(managerID);
 /*Business Management for Owners  */
 
 /*Business*/
 CREATE TABLE Business(
 	BusinessID INT IDENTITY(1,1),
 	BusinessName VARCHAR(255) NOT NULL,
-	BusinessAddress VARCHAR(255) NOT NULL,    --TODO: Rename this to HQAddress
+	HQAddress VARCHAR(255) NOT NULL,    -- Renamed 
 	OwnerID INT UNIQUE NOT NULL
 );
 ALTER TABLE Business ADD CONSTRAINT PK_Business PRIMARY KEY (BusinessID);
@@ -49,7 +51,7 @@ CREATE TABLE Stores(
 	StoreID INT IDENTITY(1,1),
 	StoreName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
-	StoreAddress VARCHAR(255),    -- TODO: add NOT NULL constraint
+	StoreAddress VARCHAR(255) NOT NULL,    -- NOT NULL constraint added
 	ManagerID INT UNIQUE NOT NULL	
 );
 ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
@@ -63,9 +65,10 @@ CREATE TABLE Products(
 	ProductName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
 	Category VARCHAR(255) NOT NULL,
-	PricePerUnit FLOAT NOT NULL,    -- TODO: change to DECIMAL(10,2)   -- has check of > 0
+	PricePerUnit DECIMAL(10,2) NOT NULL, -- DECIMAL(10,2) used --Precise fixed-point representation stores price to 2 decimal places with max 8 digits on the left of decimal point; has check of > 0
 	-- warehouseLocation VARCHAR(255)
 );
+
 
 ALTER TABLE Products ADD CONSTRAINT PK_Products PRIMARY KEY (ProductID);
 
@@ -91,7 +94,7 @@ ALTER TABLE RequestStatus ADD PRIMARY KEY (StatusID);
 INSERT INTO RequestStatus VALUES
 ('Pending'), ('Approved'), ('Rejected'), ('In Progress'), ('Completed');
 
-select * from RequestStatus
+select * from RequestStatus;
 
 
 CREATE TABLE StockRequests(
@@ -134,7 +137,7 @@ CREATE TABLE Notifications(
 	NotificationID INT IDENTITY(1,1),
 	RecipientUserID INT NOT NULL,
 	n_Type INT DEFAULT 1,
-	Content text NOT NULL,              -- TODO: change to VARCHAR(MAX) --> TEXT datatype is deprecated SQL Server 2005 onwards
+	Content VARCHAR(MAX) NOT NULL,              -- changed to VARCHAR(MAX) --> TEXT datatype is deprecated SQL Server 2005 onwards.
 	created_at DATETIME DEFAULT GETDATE(),
 	ReadStatus INT DEFAULT 1
 );
@@ -146,17 +149,18 @@ ALTER TABLE Notifications ADD CONSTRAINT PK_Notifications PRIMARY KEY (Notificat
 
 -- TODO:Combine Constraints in One ALTER TABLE Per Table
 
---Constraints added to 'Users'
-ALTER TABLE Users ADD CONSTRAINT FK_Users FOREIGN KEY (roleID) REFERENCES Roles(roleID);
-ALTER TABLE Users ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID);
-ALTER TABLE Users ADD CONSTRAINT Ch_uemail CHECK (email LIKE '%@%');
+--Constraints added to 'Owners'
+ALTER TABLE Owners ADD CONSTRAINT Ch_oemail CHECK (email LIKE '%@%');
+ALTER TABLE Managers ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID);
+ALTER TABLE Managers ADD CONSTRAINT FK_BusID FOREIGN KEY (businessID) REFERENCES Business(businessID);
+ALTER TABLE Managers ADD CONSTRAINT Ch_memail CHECK (email LIKE '%@%');
 
 --Constraints added to 'Business'
-ALTER TABLE Business ADD CONSTRAINT FK_Business FOREIGN KEY (OwnerID) REFERENCES Users(UserID);
+ALTER TABLE Business ADD CONSTRAINT FK_Business FOREIGN KEY (OwnerID) REFERENCES Owners(ownerID);
 
 --Constraints added to 'Stores'
 ALTER TABLE Stores ADD CONSTRAINT FK_Stores1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
-ALTER TABLE Stores ADD CONSTRAINT FK_Stores2 FOREIGN KEY (ManagerID) REFERENCES Users(UserID);
+ALTER TABLE Stores ADD CONSTRAINT FK_Stores2 FOREIGN KEY (ManagerID) REFERENCES Managers(managerID);
 
 --Constraints added to 'Products'
 ALTER TABLE Products ADD CONSTRAINT FK_Products1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
@@ -171,11 +175,11 @@ ALTER TABLE Inventory ADD CONSTRAINT Ch_quantity CHECK (stockQuantity >= 0);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests1 FOREIGN KEY (RequestingStoreID) REFERENCES Stores(StoreID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests3 FOREIGN KEY (ReqStatus) REFERENCES RequestStatus(StatusID);
-ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests4 FOREIGN KEY (approvedby) REFERENCES Users(UserID);
+ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests4 FOREIGN KEY (approvedby) REFERENCES Owners(ownerID);
 ALTER TABLE StockRequests ADD CONSTRAINT Ch_Rquantity CHECK (RequestedQuantity > 0);
 
 --Constraints added to 'Notifications'
-ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications1 FOREIGN KEY (RecipientUserID) REFERENCES Users(UserID);
+ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications1 FOREIGN KEY (RecipientUserID) REFERENCES Owners(ownerID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications2 FOREIGN KEY (n_Type) REFERENCES NotificationType(notificationID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications3 FOREIGN KEY (ReadStatus) REFERENCES read_status(StatusID);
 
@@ -207,8 +211,8 @@ select * from NotificationType;
 -- INSERTION  QUERIES
 
 -- User Accounts and Access
-SELECT * FROM Roles;
-SELECT * FROM Users;
+SELECT * FROM Owners;
+SELECT * FROM Managers;
 
 -- Business Management for Owners
 SELECT * FROM Business;
@@ -271,10 +275,7 @@ SELECT * FROM Notifications;
 -- DELETION QUERIES
 -- 
 
---Following should fail due to the added unique constraint
-INSERT INTO Roles (roleName) VALUES
-('Business Owner'), ('Store Manager');
-GO
+-- Following should fail due to the added unique constraint
 
 INSERT INTO RequestStatus VALUES
 ('Pending'), ('Approved'), ('Rejected'), ('In Progress'), ('Completed');
