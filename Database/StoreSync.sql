@@ -1,13 +1,21 @@
+USE master;
+GO
 
-Use master
-Drop database InventoryManagementSystem
-Go
+-- Drop the database if it already exists
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'InventoryManagementSystem')
+BEGIN
+    ALTER DATABASE InventoryManagementSystem SET SINGLE_USER WITH ROLLBACK IMMEDIATE; 
+    DROP DATABASE InventoryManagementSystem;
+END
+GO
 
---TODO: Attempt to create database only if it doesn't already exist  
---TODO: Only attempt to create a table if already doesn't exist.
-
+-- Create a fresh database
 CREATE DATABASE InventoryManagementSystem;
+GO
+
+-- Use the new database
 USE InventoryManagementSystem;
+GO
 
 /*User Accounts and Access */
 
@@ -30,7 +38,7 @@ CREATE TABLE Managers(
 	username VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255) NOT NULL,
 	businessID INT NOT NULL,
-	assignedStore INT DEFAULT(NULL)
+	assignedStore INT DEFAULT(NULL) UNIQUE
 );
 
 ALTER TABLE Managers ADD CONSTRAINT PK_Man PRIMARY KEY(managerID);
@@ -168,12 +176,12 @@ ALTER TABLE Products ADD CONSTRAINT Ch_price CHECK (priceperunit > 0);
 
 --Constraints added to 'Inventory'
 ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory1 FOREIGN KEY (warehouseID) REFERENCES Stores(StoreID);
-ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID);
+ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE;
 ALTER TABLE Inventory ADD CONSTRAINT Ch_quantity CHECK (stockQuantity >= 0);
 
 --Constraints added to 'StockRequests'
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests1 FOREIGN KEY (RequestingStoreID) REFERENCES Stores(StoreID);
-ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID);
+ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE;
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests3 FOREIGN KEY (ReqStatus) REFERENCES RequestStatus(StatusID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests4 FOREIGN KEY (approvedby) REFERENCES Owners(ownerID);
 ALTER TABLE StockRequests ADD CONSTRAINT Ch_Rquantity CHECK (RequestedQuantity > 0);
@@ -184,17 +192,6 @@ ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications2 FOREIGN KEY (n_Type) 
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications3 FOREIGN KEY (ReadStatus) REFERENCES read_status(StatusID);
 
 
-select * from Users;
-select * from Business;
-select * from Stores; 
-select * from Products;
-select * from Inventory;
-select * from StockRequests;
-select * from Notifications;
-
-select * from Roles;
-select * from read_status;
-select * from NotificationType;
 
 --select ao.name,ao.type_desc,delete_referential_action_desc,*
 --from sys.foreign_keys fk 
@@ -205,10 +202,6 @@ select * from NotificationType;
 --FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
 --WHERE TABLE_NAME = 'Users'
 --AND CONSTRAINT_TYPE = 'FOREIGN KEY';
-
-
--- Queries For Implementation:
--- INSERTION  QUERIES
 
 -- User Accounts and Access
 SELECT * FROM Owners;
@@ -231,6 +224,36 @@ SELECT * FROM NotificationType;
 SELECT * FROM read_status;
 SELECT * FROM Notifications;
 
+-- Queries For Implementation:
+-- VIEWS
+-- 1. Business & Store Summary (Retrieve all stores & managers linked to a business)
+-- BusinessID, BusinessName, StoreID, StoreName, StoreAddress, ManagerID, ManagerName, ManagerEmail
+
+-- 2. Warehouse Inventory Levels (Quickly fetch available stock for a specific warehouse.)
+-- StoreID, StoreName, ProductID, ProductName, StockQuantity
+
+-- 3. Pending Stock Requests (Fetch pending requests efficiently.)
+-- RequestID, RequestingStoreID, StoreName, ProductID, ProductName, RequestedQuantity, RequestStatus, RequestDate
+
+-- 4. View for Unread Notifications
+-- NotificationID, RecipientUserID, NotificationType, MessageContent, CreatedAt, ReadStatus
+
+-- INSERTION  QUERIES
+-- 1. Insert Owner and Business Together
+
+-- 2. Insert Manager
+
+-- 3. Insert Store
+
+-- 4. Insert Product
+
+-- 5. Insert Store / Warehouse
+
+-- 6. Insert Product in a Warehouse
+
+-- 7. Insert Stock Request
+
+-- 8. Insert Notification
 
 
 -- SELECTION QUERIES
