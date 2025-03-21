@@ -30,10 +30,10 @@ CREATE TABLE Managers(
 	username VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255) NOT NULL,
 	businessID INT NOT NULL,
-	assignedStore INT DEFAULT(NULL)
+	assignedStore INT DEFAULT(NULL) UNIQUE  --Added to ensure 1 store per manager --> allowed as unqiue constraints only ensures that non-NULL values are distinct --> multiple nulls allowed
 );
-
 ALTER TABLE Managers ADD CONSTRAINT PK_Man PRIMARY KEY(managerID);
+
 /*Business Management for Owners  */
 
 /*Business*/
@@ -51,7 +51,7 @@ CREATE TABLE Stores(
 	StoreID INT IDENTITY(1,1),
 	StoreName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
-	StoreAddress VARCHAR(255) NOT NULL,    -- NOT NULL constraint added
+	StoreAddress VARCHAR(255) NOT NULL UNIQUE,  -- Added UNIQUE constraint to prevent duplicate store addresses.
 	ManagerID INT UNIQUE NOT NULL	
 );
 ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
@@ -151,6 +151,8 @@ ALTER TABLE Notifications ADD CONSTRAINT PK_Notifications PRIMARY KEY (Notificat
 
 --Constraints added to 'Owners'
 ALTER TABLE Owners ADD CONSTRAINT Ch_oemail CHECK (email LIKE '%@%');
+
+--Constraints added to 'Managers'
 ALTER TABLE Managers ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID);
 ALTER TABLE Managers ADD CONSTRAINT FK_BusID FOREIGN KEY (businessID) REFERENCES Business(businessID);
 ALTER TABLE Managers ADD CONSTRAINT Ch_memail CHECK (email LIKE '%@%');
