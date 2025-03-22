@@ -2,7 +2,6 @@ const express = require('express');
 require('dotenv').config();
 const sql = require('mssql/msnodesqlv8');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 
 const config = {
     connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.DB_SERVER};
@@ -13,8 +12,11 @@ const app = express();
 const PORT = 5000;
 
 app.use(cors());
-app.use(bodyParser.urlencoded({ extended : false}));
-app.use(bodyParser.json());
+app.use(express.urlencoded({ 
+    extended : false,
+    limit: 10000,
+    // Set Later: parameterLimit: 
+}));
 
 app.get('/', function(req, res){
     sql.connect(config, function(err){
@@ -22,7 +24,7 @@ app.get('/', function(req, res){
             console.log(err);
         else {
             let request = new sql.Request();
-            request.query("SELECT * FROM Roles", (err, record) => {
+            request.query("SELECT * FROM Managers", (err, record) => {
                 if (err)  
                     console.log(err);
                 else
