@@ -141,37 +141,90 @@ CREATE TABLE Notifications(
 
 ALTER TABLE Notifications ADD CONSTRAINT PK_Notifications PRIMARY KEY (NotificationID);
 
--- Constraints
+--Constraints added to 'Owners'
 ALTER TABLE Owners ADD CONSTRAINT Ch_oemail CHECK (email LIKE '%@%');
 
+--Constraints added to 'Managers'
 ALTER TABLE Managers ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID);
 ALTER TABLE Managers ADD CONSTRAINT FK_BusID FOREIGN KEY (businessID) REFERENCES Business(businessID);
 ALTER TABLE Managers ADD CONSTRAINT Ch_memail CHECK (email LIKE '%@%');
 
+--Constraints added to 'Business'
 ALTER TABLE Business ADD CONSTRAINT FK_Business FOREIGN KEY (OwnerID) REFERENCES Owners(ownerID);
 
+--Constraints added to 'Stores'
 ALTER TABLE Stores ADD CONSTRAINT FK_Stores1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
 ALTER TABLE Stores ADD CONSTRAINT FK_Stores2 FOREIGN KEY (ManagerID) REFERENCES Managers(managerID);
 
+--Constraints added to 'Products'
 ALTER TABLE Products ADD CONSTRAINT FK_Products1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
 ALTER TABLE Products ADD CONSTRAINT Ch_price CHECK (priceperunit > 0);
 
+--Constraints added to 'Inventory'
 ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory1 FOREIGN KEY (warehouseID) REFERENCES Stores(StoreID);
 ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE;
 ALTER TABLE Inventory ADD CONSTRAINT Ch_quantity CHECK (stockQuantity >= 0);
 
+--Constraints added to 'StockRequests'
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests1 FOREIGN KEY (RequestingStoreID) REFERENCES Stores(StoreID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE;
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests3 FOREIGN KEY (ReqStatus) REFERENCES RequestStatus(StatusID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests4 FOREIGN KEY (approvedby) REFERENCES Owners(ownerID);
 ALTER TABLE StockRequests ADD CONSTRAINT Ch_Rquantity CHECK (RequestedQuantity > 0);
 
+--Constraints added to 'Notifications'
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications1 FOREIGN KEY (RecipientUserID) REFERENCES Owners(ownerID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications2 FOREIGN KEY (n_Type) REFERENCES NotificationType(notificationID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications3 FOREIGN KEY (ReadStatus) REFERENCES read_status(StatusID);
 
--- INSERTION  QUERIES STORED PROCEDURES
 
+
+--select ao.name,ao.type_desc,delete_referential_action_desc,*
+--from sys.foreign_keys fk 
+--inner join sys.all_objects ao 
+--on fk.parent_object_id = ao.object_id
+
+--SELECT *
+--FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+--WHERE TABLE_NAME = 'Users'
+--AND CONSTRAINT_TYPE = 'FOREIGN KEY';
+
+-- User Accounts and Access
+SELECT * FROM Owners;
+SELECT * FROM Managers;
+
+-- Business Management for Owners
+SELECT * FROM Business;
+SELECT * FROM Stores;
+
+-- Inventory Management
+SELECT * FROM Products;
+SELECT * FROM Inventory;
+
+-- Stock Movement & Requests
+SELECT * FROM RequestStatus;
+SELECT * FROM StockRequests;
+
+-- Notifications & Alerts
+SELECT * FROM NotificationType;
+SELECT * FROM read_status;
+SELECT * FROM Notifications;
+
+-- Queries For Implementation:
+-- VIEWS
+-- 1. Business & Store Summary (Retrieve all stores & managers linked to a business)
+-- BusinessID, BusinessName, StoreID, StoreName, StoreAddress, ManagerID, ManagerName, ManagerEmail
+
+-- 2. Warehouse Inventory Levels (Quickly fetch available stock for a specific warehouse.)
+-- StoreID, StoreName, ProductID, ProductName, StockQuantity
+
+-- 3. Pending Stock Requests (Fetch pending requests efficiently.)
+-- RequestID, RequestingStoreID, StoreName, ProductID, ProductName, RequestedQuantity, RequestStatus, RequestDate
+
+-- 4. View for Unread Notifications
+-- NotificationID, RecipientUserID, NotificationType, MessageContent, CreatedAt, ReadStatus
+
+-- INSERTION  QUERIES
 -- 1. Insert Owner and Business Together
 GO
 CREATE PROCEDURE insert_OwnersAndBusiness 
