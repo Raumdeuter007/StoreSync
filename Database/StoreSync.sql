@@ -24,11 +24,10 @@ CREATE TABLE Owners(
 	name VARCHAR(255) NOT NULL,
 	email VARCHAR(255) UNIQUE NOT NULL,
 	username VARCHAR(255) UNIQUE NOT NULL,
-	password VARCHAR(255) NOT NULL,
+	password VARCHAR(255) NOT NULL
 );
 
 ALTER TABLE Owners ADD CONSTRAINT PK_Owners PRIMARY KEY (ownerID);
-
 
 /* Manager Table */
 CREATE TABLE Managers(
@@ -38,7 +37,7 @@ CREATE TABLE Managers(
 	username VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255) NOT NULL,
 	businessID INT NOT NULL,
-	assignedStore INT DEFAULT(NULL) --Removed UNIQUE as NULLS treated as duplicates in MSSQL
+	assignedStore INT DEFAULT(NULL)
 );
 ALTER TABLE Managers ADD CONSTRAINT PK_Man PRIMARY KEY(managerID);
 
@@ -53,24 +52,22 @@ WHERE assignedStore IS NOT NULL;
 CREATE TABLE Business(
 	BusinessID INT IDENTITY(1,1),
 	BusinessName VARCHAR(255) NOT NULL,
-	HQAddress VARCHAR(255) NOT NULL,    -- Renamed 
+	HQAddress VARCHAR(255) NOT NULL,
 	OwnerID INT UNIQUE NOT NULL
 );
 ALTER TABLE Business ADD CONSTRAINT PK_Business PRIMARY KEY (BusinessID);
 
- 
 /* Store & Warehouse Information */
 CREATE TABLE Stores(
 	StoreID INT IDENTITY(1,1),
 	StoreName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
-	StoreAddress VARCHAR(255) NOT NULL UNIQUE,  -- Added UNIQUE constraint to prevent duplicate store addresses.
+	StoreAddress VARCHAR(255) NOT NULL UNIQUE,
 	ManagerID INT UNIQUE NOT NULL	
 );
 ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
 
-
-/* BInventory Management */
+/* Inventory Management */
 
 /* Product Details */
 CREATE TABLE Products(
@@ -78,13 +75,10 @@ CREATE TABLE Products(
 	ProductName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
 	Category VARCHAR(255) NOT NULL,
-	PricePerUnit DECIMAL(10,2) NOT NULL, -- DECIMAL(10,2) used --Precise fixed-point representation stores price to 2 decimal places with max 8 digits on the left of decimal point; has check of > 0
-	-- warehouseLocation VARCHAR(255)
+	PricePerUnit DECIMAL(10,2) NOT NULL
 );
 
-
 ALTER TABLE Products ADD CONSTRAINT PK_Products PRIMARY KEY (ProductID);
-
 
 CREATE TABLE Inventory(
 	warehouseID INT NOT NULL,
@@ -96,50 +90,40 @@ ALTER TABLE Inventory ADD CONSTRAINT PK_Inventory PRIMARY KEY (warehouseID, Prod
  
 /*Stock Movement & Requests */
 
-
-CREATE TABLE RequestStatus(                /*lookup TABLE for status */
+CREATE TABLE RequestStatus(
 	StatusID INT IDENTITY(1,1),
-	StatusName VARCHAR(255) NOT NULL UNIQUE  -- -- ADDED: 1)NOT NULL Contraint; 2)UNIQUE Contraint;
-	 
+	StatusName VARCHAR(255) NOT NULL UNIQUE
 );
 
 ALTER TABLE RequestStatus ADD PRIMARY KEY (StatusID);
 INSERT INTO RequestStatus VALUES
 ('Pending'), ('Approved'), ('Rejected'), ('In Progress'), ('Completed');
 
-select * from RequestStatus;
-
-
 CREATE TABLE StockRequests(
 	RequestingStoreID INT NOT NULL,
 	ProductID INT NOT NULL,
-	RequestedQuantity INT NOT NULL,   --  constraint of >0 enforced --> atleast 1 unit of some product should be requested
+	RequestedQuantity INT NOT NULL,
 	ReqStatus INT DEFAULT 1,
 	request_date DATETIME DEFAULT GETDATE() NOT NULL,
 	approvedby INT DEFAULT NULL,
 	fullfillmentdate DATETIME DEFAULT NULL
 );
 
---No store can make multiple requests for the same product at the exact same timestamp.
---Prevents duplicate stock requests accidentally being inserted --> double entry prevented on accidentally placing multiple requests.
-ALTER TABLE StockRequests ADD CONSTRAINT PK_StockRequests PRIMARY KEY (RequestingStoreID, ProductID, request_date);   
+ALTER TABLE StockRequests ADD CONSTRAINT PK_StockRequests PRIMARY KEY (RequestingStoreID, ProductID, request_date);
 
 /* Notifications & Alerts */
 
-CREATE TABLE NotificationType(                /*lookup table for NotificationType */
+CREATE TABLE NotificationType(
 	notificationID INT IDENTITY(1,1),
-	nType VARCHAR(100)	NOT NULL UNIQUE		-- ADDED: 1)NOT NULL Contraint; 2)UNIQUE Contraint;
-	
+	nType VARCHAR(100) NOT NULL UNIQUE
 );
 ALTER TABLE NotificationType ADD PRIMARY KEY (notificationID);
 INSERT INTO NotificationType VALUES
-('Low Stock'),  ('Restock Request'), ('System Alert');
+('Low Stock'), ('Restock Request'), ('System Alert');
 
-
-CREATE TABLE read_status(                /*lookup TABLE for read_status */
+CREATE TABLE read_status(
 	StatusID INT IDENTITY(1,1),
-	StatusName VARCHAR(100)	  NOT NULL UNIQUE	-- ADDED: 1)NOT NULL Contraint; 2)UNIQUE Contraint;
-
+	StatusName VARCHAR(100) NOT NULL UNIQUE
 );
 
 ALTER TABLE read_status ADD PRIMARY KEY (StatusID);
@@ -150,230 +134,154 @@ CREATE TABLE Notifications(
 	NotificationID INT IDENTITY(1,1),
 	RecipientUserID INT NOT NULL,
 	n_Type INT DEFAULT 1,
-	Content VARCHAR(MAX) NOT NULL,              -- changed to VARCHAR(MAX) --> TEXT datatype is deprecated SQL Server 2005 onwards.
+	Content VARCHAR(MAX) NOT NULL,
 	created_at DATETIME DEFAULT GETDATE(),
 	ReadStatus INT DEFAULT 1
 );
 
 ALTER TABLE Notifications ADD CONSTRAINT PK_Notifications PRIMARY KEY (NotificationID);
 
-
--- Alter table command Remains here to avoid Foriegn key dependency issues(Referenced table non-existent at the time of adding FK constraints)
-
--- TODO:Combine Constraints in One ALTER TABLE Per Table
-
---Constraints added to 'Owners'
+-- Constraints
 ALTER TABLE Owners ADD CONSTRAINT Ch_oemail CHECK (email LIKE '%@%');
 
---Constraints added to 'Managers'
 ALTER TABLE Managers ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID);
 ALTER TABLE Managers ADD CONSTRAINT FK_BusID FOREIGN KEY (businessID) REFERENCES Business(businessID);
 ALTER TABLE Managers ADD CONSTRAINT Ch_memail CHECK (email LIKE '%@%');
 
---Constraints added to 'Business'
 ALTER TABLE Business ADD CONSTRAINT FK_Business FOREIGN KEY (OwnerID) REFERENCES Owners(ownerID);
 
---Constraints added to 'Stores'
 ALTER TABLE Stores ADD CONSTRAINT FK_Stores1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
 ALTER TABLE Stores ADD CONSTRAINT FK_Stores2 FOREIGN KEY (ManagerID) REFERENCES Managers(managerID);
 
---Constraints added to 'Products'
 ALTER TABLE Products ADD CONSTRAINT FK_Products1 FOREIGN KEY (BusinessID) REFERENCES Business(BusinessID);
 ALTER TABLE Products ADD CONSTRAINT Ch_price CHECK (priceperunit > 0);
 
---Constraints added to 'Inventory'
 ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory1 FOREIGN KEY (warehouseID) REFERENCES Stores(StoreID);
 ALTER TABLE Inventory ADD CONSTRAINT FK_Inventory2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE;
 ALTER TABLE Inventory ADD CONSTRAINT Ch_quantity CHECK (stockQuantity >= 0);
 
---Constraints added to 'StockRequests'
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests1 FOREIGN KEY (RequestingStoreID) REFERENCES Stores(StoreID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests2 FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE CASCADE;
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests3 FOREIGN KEY (ReqStatus) REFERENCES RequestStatus(StatusID);
 ALTER TABLE StockRequests ADD CONSTRAINT FK_StockRequests4 FOREIGN KEY (approvedby) REFERENCES Owners(ownerID);
 ALTER TABLE StockRequests ADD CONSTRAINT Ch_Rquantity CHECK (RequestedQuantity > 0);
 
---Constraints added to 'Notifications'
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications1 FOREIGN KEY (RecipientUserID) REFERENCES Owners(ownerID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications2 FOREIGN KEY (n_Type) REFERENCES NotificationType(notificationID);
 ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications3 FOREIGN KEY (ReadStatus) REFERENCES read_status(StatusID);
 
+-- INSERTION  QUERIES STORED PROCEDURES
 
-
---select ao.name,ao.type_desc,delete_referential_action_desc,*
---from sys.foreign_keys fk 
---inner join sys.all_objects ao 
---on fk.parent_object_id = ao.object_id
-
---SELECT *
---FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
---WHERE TABLE_NAME = 'Users'
---AND CONSTRAINT_TYPE = 'FOREIGN KEY';
-
--- User Accounts and Access
-SELECT * FROM Owners;
-SELECT * FROM Managers;
-
--- Business Management for Owners
-SELECT * FROM Business;
-SELECT * FROM Stores;
-
--- Inventory Management
-SELECT * FROM Products;
-SELECT * FROM Inventory;
-
--- Stock Movement & Requests
-SELECT * FROM RequestStatus;
-SELECT * FROM StockRequests;
-
--- Notifications & Alerts
-SELECT * FROM NotificationType;
-SELECT * FROM read_status;
-SELECT * FROM Notifications;
-
--- Queries For Implementation:
--- VIEWS
--- 1. Business & Store Summary (Retrieve all stores & managers linked to a business)
--- BusinessID, BusinessName, StoreID, StoreName, StoreAddress, ManagerID, ManagerName, ManagerEmail
-
--- 2. Warehouse Inventory Levels (Quickly fetch available stock for a specific warehouse.)
--- StoreID, StoreName, ProductID, ProductName, StockQuantity
-
--- 3. Pending Stock Requests (Fetch pending requests efficiently.)
--- RequestID, RequestingStoreID, StoreName, ProductID, ProductName, RequestedQuantity, RequestStatus, RequestDate
-
--- 4. View for Unread Notifications
--- NotificationID, RecipientUserID, NotificationType, MessageContent, CreatedAt, ReadStatus
-
--- INSERTION  QUERIES
 -- 1. Insert Owner and Business Together
 GO
 CREATE PROCEDURE insert_OwnersAndBusiness 
-        @O_name VARCHAR(255), 
-	 @O_email VARCHAR(255),
-	 @O_username VARCHAR(255), 
-	 @O_password VARCHAR(255),
-	 @BusinessName VARCHAR(255) ,
-	 @HQAddress VARCHAR(255)     
-	 
+    @O_name VARCHAR(255), 
+    @O_email VARCHAR(255),
+    @O_username VARCHAR(255), 
+    @O_password VARCHAR(255),
+    @BusinessName VARCHAR(255),
+    @HQAddress VARCHAR(255)     
 AS
 BEGIN 
     INSERT INTO Owners(name,email,username,password)
-	VALUES(@O_name,@O_email,@O_username,@O_password);
+    VALUES(@O_name,@O_email,@O_username,@O_password);
 
-	INSERT INTO Business(BusinessName,HQAddress,OwnerID)
-	VALUES(@BusinessName,@HQAddress,SCOPE_IDENTITY());
-
-
+    INSERT INTO Business(BusinessName,HQAddress,OwnerID)
+    VALUES(@BusinessName,@HQAddress,SCOPE_IDENTITY());
 END;
 GO
+
 -- 2. Insert Manager
 GO
 CREATE PROCEDURE insert_Managers 
-       @name VARCHAR(255), 
-	  @email VARCHAR(255),
-	  @username VARCHAR(255), 
-	  @password VARCHAR(255), 
-	  @businessID INT, 
-	  @assignedStore INT 
+    @name VARCHAR(255), 
+    @email VARCHAR(255),
+    @username VARCHAR(255), 
+    @password VARCHAR(255), 
+    @businessID INT, 
+    @assignedStore INT 
 AS
 BEGIN 
     INSERT INTO Managers(name,email,username,password,businessID,assignedStore)
-	VALUES(@name,@email,@username,@password, @businessID,@assignedStore);
-
+    VALUES(@name,@email,@username,@password, @businessID,@assignedStore);
 END;
 GO
 
 -- 3. Insert Store / Warehouse
-
+GO
 CREATE PROCEDURE insert_Stores 
-	@StoreName VARCHAR(255) ,
-	@BusinessID INT ,
-	@StoreAddress VARCHAR(255)  ,  
-	@ManagerID INT  
- 
+    @StoreName VARCHAR(255),
+    @BusinessID INT,
+    @StoreAddress VARCHAR(255),  
+    @ManagerID INT  
 AS
 BEGIN 
     INSERT INTO Stores(StoreName,BusinessID,StoreAddress,ManagerID)
-	VALUES(@StoreName,@BusinessID,@StoreAddress,@ManagerID);
-
+    VALUES(@StoreName,@BusinessID,@StoreAddress,@ManagerID);
 END;
+GO
 
 -- 4. Insert Product
 GO
-
-GO
 CREATE PROCEDURE insert_Products  
-	@ProductName VARCHAR(255),
-	@BusinessID INT,
-	@Category VARCHAR(255),
-	@PricePerUnit DECIMAL(10,2)
- 
+    @ProductName VARCHAR(255),
+    @BusinessID INT,
+    @Category VARCHAR(255),
+    @PricePerUnit DECIMAL(10,2)
 AS
 BEGIN 
     INSERT INTO Products(ProductName,BusinessID,Category,PricePerUnit)
-	VALUES(@ProductName,@BusinessID,@Category,@PricePerUnit);
-
+    VALUES(@ProductName,@BusinessID,@Category,@PricePerUnit);
 END;
-Go
-
 GO
+
 -- 5. Insert Product in a Warehouse
 GO
 CREATE PROCEDURE insert_ProductinWarehouse  
-	@warehouseID INT,
-	@ProductID INT,
-	@stockQuantity INT  
- 
+    @warehouseID INT,
+    @ProductID INT,
+    @stockQuantity INT  
 AS
 BEGIN 
-     --if the product detail does not already exist
-     IF NOT EXISTS (SELECT 1
-	                FROM Inventory WHERE warehouseID=@warehouseID AND ProductID=@ProductID)
-	INSERT INTO Inventory (warehouseID, ProductID, stockQuantity)
+    IF NOT EXISTS (SELECT 1 FROM Inventory WHERE warehouseID=@warehouseID AND ProductID=@ProductID)
+        INSERT INTO Inventory (warehouseID, ProductID, stockQuantity)
         VALUES (@warehouseID, @ProductID, @stockQuantity);
-		
-     ELSE
-      --if the product already exists in inventory only update the stock quantity
-	 UPDATE Inventory
-	 SET stockQuantity = stockQuantity + @stockQuantity
-	 WHERE warehouseID=@warehouseID AND ProductID=@ProductID;
-        
+    ELSE
+        UPDATE Inventory
+        SET stockQuantity = stockQuantity + @stockQuantity
+        WHERE warehouseID=@warehouseID AND ProductID=@ProductID;
 END;
 GO
+
 -- 6. Insert Stock Request
 GO
-CREATE PROCEDURE  insert_StockRequests
-	@RequestingStoreID INT,
-	@ProductID INT,
-	@RequestedQuantity INT,
-	@ReqStatus INT,
-	@request_date DATETIME,
-	@approvedby INT,
-	@fullfillmentdate DATETIME
- 
+CREATE PROCEDURE insert_StockRequests
+    @RequestingStoreID INT,
+    @ProductID INT,
+    @RequestedQuantity INT,
+    @ReqStatus INT,
+    @request_date DATETIME,
+    @approvedby INT,
+    @fullfillmentdate DATETIME
 AS
 BEGIN 
-    INSERT INTO  StockRequests(RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date,approvedby,fullfillmentdate)
-	VALUES(@RequestingStoreID,@ProductID,@RequestedQuantity,@ReqStatus,@request_date,@approvedby,@fullfillmentdate);
-
+    INSERT INTO StockRequests(RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date,approvedby,fullfillmentdate)
+    VALUES(@RequestingStoreID,@ProductID,@RequestedQuantity,@ReqStatus,@request_date,@approvedby,@fullfillmentdate);
 END;
 GO
--- 7. Insert Notification
 
+-- 7. Insert Notification
 GO
-CREATE PROCEDURE  insert_Notifications 
-	@RecipientUserID INT,
-	@n_Type INT,
-	@Content VARCHAR(MAX),               
-	@created_at DATETIME,
-	@ReadStatus INT 
- 
+CREATE PROCEDURE insert_Notifications 
+    @RecipientUserID INT,
+    @n_Type INT,
+    @Content VARCHAR(MAX),               
+    @created_at DATETIME,
+    @ReadStatus INT 
 AS
 BEGIN 
     INSERT INTO Notifications(RecipientUserID,n_Type,Content,created_at,ReadStatus)
-	VALUES(@RecipientUserID,@n_Type,@Content,@created_at,@ReadStatus);
-
+    VALUES(@RecipientUserID,@n_Type,@Content,@created_at,@ReadStatus);
 END;
 GO
 
@@ -417,18 +325,5 @@ GO
 -- 20. Generate a report of all low-stock products grouped by warehouse for restocking decisions.
 
 -- DELETION QUERIES
--- 
 
--- Following should fail due to the added unique constraint
 
-INSERT INTO RequestStatus VALUES
-('Pending'), ('Approved'), ('Rejected'), ('In Progress'), ('Completed');
-GO
-
-INSERT INTO NotificationType VALUES
-('Low Stock'),  ('Restock Request'), ('System Alert');
-GO
-
-INSERT INTO read_status VALUES
-('Unread'), ('Read');
-GO
