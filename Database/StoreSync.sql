@@ -63,7 +63,7 @@ CREATE TABLE Stores(
 	StoreName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
 	StoreAddress VARCHAR(255) NOT NULL UNIQUE,
-	ManagerID INT UNIQUE NOT NULL	
+	ManagerID INT UNIQUE 	
 );
 ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
 
@@ -309,12 +309,12 @@ BEGIN
 END;
 
 -- 7. Insert Stock Request
-
+GO
 CREATE PROCEDURE insert_StockRequests
 	@RequestingStoreID INT,
 	@ProductID INT,
 	@RequestedQuantity INT,
-	@ReqStatus INT,
+	@ReqStatus INT
 AS
 BEGIN 
     INSERT INTO StockRequests(RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date)
@@ -323,11 +323,11 @@ BEGIN
 END;
 
 -- 8. Insert Notification
-
+GO
 CREATE PROCEDURE insert_Notifications 
-	@RecipientUserID INT
+	@RecipientUserID INT,
 	@n_Type INT,
-	@Content VARCHAR(MAX),               
+	@Content VARCHAR(MAX)             
 AS
 BEGIN 
     INSERT INTO Notifications(RecipientUserID, n_Type, Content, created_at, ReadStatus)

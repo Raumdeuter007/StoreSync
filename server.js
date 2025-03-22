@@ -12,11 +12,13 @@ const app = express();
 const PORT = 5000;
 
 app.use(cors());
-app.use(express.urlencoded({ 
+const reg_bus = express.urlencoded({ 
     extended : false,
     limit: 10000,
-    // Set Later: parameterLimit: 
-}));
+    parameterLimit: 6
+});
+
+
 
 app.get('/', function(req, res){
     sql.connect(config, function(err){
@@ -33,6 +35,35 @@ app.get('/', function(req, res){
         }
     })
     res.end("It worked!");
+});
+
+app.post("/register/business", reg_bus, (req, res) => {
+    const {name, email, username, password, business, address} = req.body;
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+            res.status(505).json({ message: "Could not connect", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("O_name", name)
+            .input("O_email", email)
+            .input("O_username", username)
+            .input("O_password", password)
+            .input("BusinessName", business)
+            .input("HQAddress", address)
+            .execute("insert_OwnersAndBusiness", (err) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+            });
+        }
+    })
+    res.json({message: "It was added successfully"});
 });
 
 app.listen(PORT, () => {
