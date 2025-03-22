@@ -288,56 +288,77 @@ BEGIN
 END;
 GO
 
--- 5. Insert Product in a Warehouse
-GO
+-- 5. Insert Store / Warehouse
+
+CREATE PROCEDURE insert_Stores 
+	@StoreName VARCHAR(255) ,
+	@BusinessID INT ,
+	@StoreAddress VARCHAR(255)  ,  
+	@ManagerID INT  
+
+AS
+BEGIN 
+    INSERT INTO Stores(StoreName,BusinessID,StoreAddress,ManagerID)
+	VALUES(@StoreName,@BusinessID,@StoreAddress,@ManagerID);
+
+END;
+
+-- 6. Insert Product in a Warehouse
+
 CREATE PROCEDURE insert_ProductinWarehouse  
-    @warehouseID INT,
-    @ProductID INT,
-    @stockQuantity INT  
+	@warehouseID INT,
+	@ProductID INT,
+	@stockQuantity INT  
+
 AS
 BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM Inventory WHERE warehouseID=@warehouseID AND ProductID=@ProductID)
-        INSERT INTO Inventory (warehouseID, ProductID, stockQuantity)
+     --if the product detail does not already exist
+     IF NOT EXISTS (SELECT 1
+	                FROM Inventory WHERE warehouseID=@warehouseID AND ProductID=@ProductID)
+	INSERT INTO Inventory (warehouseID, ProductID, stockQuantity)
         VALUES (@warehouseID, @ProductID, @stockQuantity);
-    ELSE
-        UPDATE Inventory
-        SET stockQuantity = stockQuantity + @stockQuantity
-        WHERE warehouseID=@warehouseID AND ProductID=@ProductID;
-END;
-GO
 
--- 6. Insert Stock Request
-GO
-CREATE PROCEDURE insert_StockRequests
-    @RequestingStoreID INT,
-    @ProductID INT,
-    @RequestedQuantity INT,
-    @ReqStatus INT,
-    @request_date DATETIME,
-    @approvedby INT,
-    @fullfillmentdate DATETIME
+     ELSE
+      --if the product already exists in inventory only update the stock quantity
+	 UPDATE Inventory
+	 SET stockQuantity = stockQuantity + @stockQuantity
+	 WHERE warehouseID=@warehouseID AND ProductID=@ProductID;
+
+END;
+
+-- 7. Insert Stock Request
+
+CREATE PROCEDURE  insert_StockRequests
+	@RequestingStoreID INT,
+	@ProductID INT,
+	@RequestedQuantity INT,
+	@ReqStatus INT,
+	@request_date DATETIME,
+	@approvedby INT,
+	@fullfillmentdate DATETIME
+
 AS
 BEGIN 
-    INSERT INTO StockRequests(RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date,approvedby,fullfillmentdate)
-    VALUES(@RequestingStoreID,@ProductID,@RequestedQuantity,@ReqStatus,@request_date,@approvedby,@fullfillmentdate);
-END;
-GO
+    INSERT INTO  StockRequests(RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date,approvedby,fullfillmentdate)
+	VALUES(@RequestingStoreID,@ProductID,@RequestedQuantity,@ReqStatus,@request_date,@approvedby,@fullfillmentdate);
 
--- 7. Insert Notification
-GO
-CREATE PROCEDURE insert_Notifications 
-    @RecipientUserID INT,
-    @n_Type INT,
-    @Content VARCHAR(MAX),               
-    @created_at DATETIME,
-    @ReadStatus INT 
+END;
+
+-- 8. Insert Notification
+
+CREATE PROCEDURE  insert_Notifications 
+	@RecipientUserID INT
+	@n_Type INT,
+	@Content VARCHAR(MAX),               
+	@created_at DATETIME,
+	@ReadStatus INT 
+
 AS
 BEGIN 
-    INSERT INTO Notifications(RecipientUserID,n_Type,Content,created_at,ReadStatus)
-    VALUES(@RecipientUserID,@n_Type,@Content,@created_at,@ReadStatus);
-END;
-GO
+    INSERT INTO Notifications(@RecipientUserID,n_Type,Content,created_at,ReadStatus)
+	VALUES(@RecipientUserID,@n_Type,@Content,@created_at,@ReadStatus);
 
+END;
 -- SELECTION QUERIES
 --  1. Verify Username and Password, return user details
 
@@ -378,5 +399,19 @@ GO
 -- 20. Generate a report of all low-stock products grouped by warehouse for restocking decisions.
 
 -- DELETION QUERIES
+-- 
 
+-- Following should fail due to the added unique constraint
+
+INSERT INTO RequestStatus VALUES
+('Pending'), ('Approved'), ('Rejected'), ('In Progress'), ('Completed');
+GO
+
+INSERT INTO NotificationType VALUES
+('Low Stock'),  ('Restock Request'), ('System Alert');
+GO
+
+INSERT INTO read_status VALUES
+('Unread'), ('Read');
+GO
 
