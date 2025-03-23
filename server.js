@@ -243,12 +243,205 @@ app.post("/add_stockreq", add_stock, (req, res) =>
                 }
                 else
                 {
-                    res.json({message: "It was added successfully"});
+                    res.json({ message: "It was added successfully"});
                 }
             });
         }
     })
 });
+
+app.delete("/store/:id", (req, res) =>
+{
+    const { id }= req.params;
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+            res.status(505).json({ message: "Could not connect", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("StoreID", id)
+            .execute("delete_store", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    console.log(record);
+                    if (record.rowsAffected[0] === 0)
+                        res.status(404).json({ message: "Store Not found"});
+                    else
+                        res.json({ message: "It was deleted successfully"});
+                }
+            });
+        }
+    })
+});
+
+app.delete("/product/:id", (req, res) =>
+{
+    const { id }= req.params;
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+            res.status(505).json({ message: "Could not connect", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("ProductID", id)
+            .execute("delete_product", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    console.log(record);
+                    if (record.rowsAffected[0] === 0)
+                        res.status(404).json({ message: "Product Not found"});
+                    else
+                        res.json({ message: "It was deleted successfully"});
+                }
+            });
+        }
+    })
+});
+
+app.delete("/stock_req/:id", (req, res) =>
+{
+    const { id } = req.params;
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+            res.status(505).json({ message: "Could not connect", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("RequestID", id)
+            .execute("Cancel_StockRequest", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    console.log(record);
+                    if (record.rowsAffected[0] === 0)
+                        res.status(404).json({ message: "Stock Request Not found"});
+                    else
+                        res.json({ message: "Request was deleted successfully"});
+                }
+            });
+        }
+    })
+});
+
+app.delete("/stock_req/:id", (req, res) =>
+{
+    const { id } = req.params;
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+            res.status(505).json({ message: "Could not connect", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("RequestID", id)
+            .execute("Cancel_StockRequest", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    console.log(record);
+                    if (record.rowsAffected[0] === 0)
+                        res.status(404).json({ message: "Stock Request Not found"});
+                    else
+                        res.json({ message: "Request was deleted successfully"});
+                }
+            });
+        }
+    })
+});
+    
+app.delete("/sto_manager/:id", (req, res) =>
+{
+    const { id } = req.params;
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+            res.status(505).json({ message: "Could not connect", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("ManagerID", id)
+            .execute("delete_manager_withNoAssignedStore", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    console.log(record);
+                    if (record.rowsAffected[0] === 0)
+                        res.status(404).json({ message: "Manager Not found"});
+                    else
+                        res.json({ message: "Store Manager was deleted successfully"});
+                }
+            });
+        }
+    })
+});
+
+app.delete("/notification/:id", (req, res) =>
+{
+    const { id } = req.params; // Change this to session id
+    sql.connect(config, (err) => {
+        if (err) {
+            console.log(err);
+            res.status(505).json({ message: "Could not connect", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("ownerID", id)
+            .execute("Remove_Read_Notifications", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    console.log(record);
+                    if (record.rowsAffected[0] === 0)
+                        res.status(404).json({ message: "Manager Not found"});
+                    else
+                        res.json({ message: "Store Manager was deleted successfully"});
+                }
+            });
+        }
+    })
+}
+)
 
 
 app.listen(PORT, () => {
