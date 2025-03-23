@@ -1,4 +1,4 @@
-
+USE InventoryManagementSystem
 -- 1. Insert Owner and Business Together
 GO
 CREATE PROCEDURE insert_OwnersAndBusiness 
@@ -63,21 +63,20 @@ END;
 GO
 CREATE PROCEDURE insert_ProductinWarehouse  
 	@warehouseID INT,
-	@ProductID INT,
-	@stockQuantity INT  
+	@ProductID INT
 AS
 BEGIN 
      -- if the product detail does not already exist
-     IF NOT EXISTS (SELECT 1
-	                FROM Inventory WHERE warehouseID = @warehouseID AND ProductID = @ProductID)	
-		INSERT INTO Inventory (warehouseID, ProductID, stockQuantity)
-        VALUES (@warehouseID, @ProductID, @stockQuantity);
+     --IF NOT EXISTS (SELECT 1
+	    --            FROM Inventory WHERE warehouseID = @warehouseID AND ProductID = @ProductID)	
+	INSERT INTO Inventory (warehouseID, ProductID)
+        VALUES (@warehouseID, @ProductID);
 
-     ELSE
-      -- if the product already exists in inventory only update the stock quantity
-	 UPDATE Inventory
-	 SET stockQuantity = stockQuantity + @stockQuantity
-	 WHERE warehouseID = @warehouseID AND ProductID = @ProductID;
+  --   ELSE
+  --    -- if the product already exists in inventory only update the stock quantity
+	 --UPDATE Inventory
+	 --SET stockQuantity = stockQuantity + @stockQuantity
+	 --WHERE warehouseID = @warehouseID AND ProductID = @ProductID;
 
 END;
 
@@ -87,24 +86,18 @@ CREATE PROCEDURE insert_StockRequests
 	@RequestingStoreID INT,
 	@ProductID INT,
 	@RequestedQuantity INT,
-	@ReqStatus INT
+	@message VARCHAR(MAX)
 AS
 BEGIN 
-    INSERT INTO StockRequests(RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date)
-	VALUES(@RequestingStoreID, @ProductID, @RequestedQuantity, @ReqStatus, GETDATE());
+    INSERT INTO StockRequests(RequestingStoreID, ProductID, RequestedQuantity, request_date)
+	VALUES(@RequestingStoreID, @ProductID, @RequestedQuantity, GETDATE());
+	
+	DECLARE @O_id INT;
+	SET @O_id = (SELECT OwnerID FROM Business JOIN Products ON Products.BusinessID = Business.BusinessID
+	WHERE ProductID = @ProductID);
 
-END;
-GO
--- 7. Insert Notification
-GO
-CREATE PROCEDURE insert_Notifications 
-	@RecipientUserID INT,
-	@n_Type INT,
-	@Content VARCHAR(MAX)             
-AS
-BEGIN 
-    INSERT INTO Notifications(RecipientUserID, n_Type, Content, created_at, ReadStatus)
-	VALUES(@RecipientUserID, @n_Type, @Content, GETDATE(), 1);
+	INSERT INTO Notifications(RecipientUserID, n_Type, Content, created_at, ReadStatus)
+	VALUES(@O_ID, 2, @message, GETDATE(), 1);
 
 END;
 GO
