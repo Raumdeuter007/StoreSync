@@ -60,10 +60,13 @@ app.post("/register/business", reg_bus, (req, res) => {
                     console.log(err);
                     res.status(505).json({ message: "Could not execute query", err});
                 }
+                else
+                {
+                    res.json({message: "It was added successfully"});
+                }
             });
         }
     })
-    res.json({message: "It was added successfully"});
 });
 
 app.listen(PORT, () => {

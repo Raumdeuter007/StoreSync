@@ -1,10 +1,9 @@
 use InventoryManagementSystem
 GO
 
---Business & Store Summary (Retrieve all stores & managers linked to a business)
---BusinessID, BusinessName, StoreID, StoreName, StoreAddress, ManagerID, ManagerName, ManagerEmail
+-- 1. Business & Store Summary (Retrieve all stores & managers linked to a business)
+-- BusinessID, BusinessName, StoreID, StoreName, StoreAddress, ManagerID, ManagerName, ManagerEmail
 GO
---Summary of ALL Businesses and associated Stores and Managers
 CREATE VIEW ABusinessStoreOverview AS
 (
 	SELECT B.BusinessID, B.BusinessName, S.StoreID, S.StoreName, S.StoreAddress,M.managerID, M.name AS ManagerName, M.email AS ManagerEmail
@@ -15,30 +14,30 @@ CREATE VIEW ABusinessStoreOverview AS
 )
 GO
 
-GO
-CREATE PROCEDURE BusinessStoreSummary (
-@BusinessID INT
-)
-AS
-BEGIN
-	DECLARE @RetCode INT = 0   --Return value to return ==> 0: success, -1: failure
-	DECLARE @ERRNO NVARCHAR(4000) = NULL
+--GO
+--CREATE PROCEDURE BusinessStoreSummary (
+--@BusinessID INT
+--)
+--AS
+--BEGIN
+--	DECLARE @RetCode INT = 0   --Return value to return ==> 0: success, -1: failure
+--	DECLARE @ERRNO NVARCHAR(4000) = NULL
 
-	BEGIN TRY
-		SELECT BusinessID, BusinessName, StoreID, StoreName,StoreAddress,managerID,ManagerName,ManagerEmail
-		FROM ABusinessStoreOverview AS ABSO
-		WHERE ABSO.BusinessID = @BusinessID
+--	BEGIN TRY
+--		SELECT BusinessID, BusinessName, StoreID, StoreName,StoreAddress,managerID,ManagerName,ManagerEmail
+--		FROM ABusinessStoreOverview AS ABSO
+--		WHERE ABSO.BusinessID = @BusinessID
 
-		-- Return success response --> retcode = 0, ERRNO = NULL
-		SELECT @RetCode AS RetCode, @ERRNO as ERRNO
-	END TRY
-	BEGIN CATCH
-		SET @RetCode = -1
-		SET @ERRNO = ERROR_MESSAGE()   --  ERROR_MESSAGE(): Returns the error message of the most recent error in the nearest CATCH block.
-		SELECT @RetCode AS RetCode, @ERRNO as ERRNO
-	END CATCH
-END
-GO
+--		-- Return success response --> retcode = 0, ERRNO = NULL
+--		SELECT @RetCode AS RetCode, @ERRNO as ERRNO
+--	END TRY
+--	BEGIN CATCH
+--		SET @RetCode = -1
+--		SET @ERRNO = ERROR_MESSAGE()   --  ERROR_MESSAGE(): Returns the error message of the most recent error in the nearest CATCH block.
+--		SELECT @RetCode AS RetCode, @ERRNO as ERRNO
+--	END CATCH
+--END
+--GO
 
 Insert Into Owners
 values('helli', 'hellybelly@jelly.com','bellyhelly124', '1011011')
@@ -90,9 +89,6 @@ Go
 -- 2. Warehouse Inventory Levels (Quickly fetch available stock for a specific warehouse.)
 -- StoreID, StoreName, ProductID, ProductName, StockQuantity
 
---Warehouses will be matched by name(more user-friendly) -- accesible to user only through 'FetchInventoryLevels'
-
---Fetch Inventory Levels for All warehouses
 GO
 CREATE VIEW AllWInventoryLvls AS
 (
@@ -104,7 +100,7 @@ CREATE VIEW AllWInventoryLvls AS
 )
 
 GO
---Return Inventory levels of each product in stock for user-input warehouse
+-- Return Inventory levels of each product in stock for user-input warehouse
 CREATE PROCEDURE FetchInventoryLevels(
 	@WarehouseName VARCHAR(255),   
 	@WarehouseManager INT
@@ -149,7 +145,7 @@ GO
 -- 3. Pending Stock Requests (Fetch pending requests efficiently.)
 -- RequestingStoreID, StoreName, ProductID, ProductName, RequestedQuantity, RequestStatus, RequestDate
 GO
---Shows all pending requests for all stores
+-- Shows all pending requests for all stores
 CREATE VIEW APendingReqs AS
 (	
 	SELECT S.StoreID AS RequestingStoreID, S.StoreName, P.ProductID, SR.RequestedQuantity, SR.ReqStatus, SR.request_date, S.ManagerID
