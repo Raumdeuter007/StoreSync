@@ -189,6 +189,504 @@ ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications3 FOREIGN KEY (ReadStat
 --WHERE TABLE_NAME = 'Users'
 --AND CONSTRAINT_TYPE = 'FOREIGN KEY';
 
+
+--UPDATE QUERIES
+-- 1. Update Owner Details
+
+GO
+CREATE PROCEDURE UpdateOwners
+    @ColumnName VARCHAR(128),
+    @NewVal VARCHAR(255),
+    @OwnerId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+    DECLARE @RetCode INT = 0;
+    DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+    -- Check for NULL parameters
+    IF @ColumnName IS NULL OR @OwnerId IS NULL
+    BEGIN
+        SET @RetCode = -1;
+        SET @ERRNO = 'NULL_PARAM';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+        RETURN;
+    END
+
+    -- Check for NULL or empty NewVal (all columns NOT NULL)
+    IF @NewVal IS NULL OR @NewVal = ''
+    BEGIN
+        SET @RetCode = -1;
+        SET @ERRNO = 'INVALID_VAL: Value cannot be NULL or empty';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+        RETURN;
+    END
+
+    -- Validate ColumnName
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM sys.columns 
+        WHERE object_id = OBJECT_ID('Owners') 
+        AND name = @ColumnName
+    )
+    BEGIN
+        SET @RetCode = -1;
+        SET @ERRNO = 'INVALID_COLUMN: ' + @ColumnName;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+        RETURN;
+    END
+
+    -- Prevent updating IDENTITY column
+    IF @ColumnName = 'ownerID'
+    BEGIN
+        SET @RetCode = -1;
+        SET @ERRNO = 'IDENTITY_UPDATE: Cannot update ownerID';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+        RETURN;
+    END
+
+    -- Check email constraint
+    IF @ColumnName = 'email' AND @NewVal NOT LIKE '%@%'
+    BEGIN
+        SET @RetCode = -1;
+        SET @ERRNO = 'EMAIL_FORMAT: Email must contain @';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+        RETURN;
+    END
+
+    -- Check uniqueness for email and username (excluding current row)
+    IF @ColumnName IN ('email', 'username')
+        AND EXISTS (
+            SELECT 1 
+            FROM Owners 
+            WHERE (@ColumnName = 'email' AND email = @NewVal)
+               OR (@ColumnName = 'username' AND username = @NewVal)
+            AND ownerID != @OwnerId
+        )
+    BEGIN
+        SET @RetCode = -1;
+        SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate ' + @ColumnName;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+        RETURN;
+    END
+
+    -- Check if OwnerId exists
+    IF NOT EXISTS (SELECT 1 FROM Owners WHERE ownerID = @OwnerId)
+    BEGIN
+        SET @RetCode = -1;
+        SET @ERRNO = 'NO_RECORD: OwnerID ' + CAST(@OwnerId AS VARCHAR(10)) + ' not found';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+        RETURN;
+    END
+
+    BEGIN TRY
+        -- Build and execute dynamic SQL
+        SET @SQL = 'UPDATE Owners SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE ownerID = @OwnerId';
+        EXEC sp_executesql @SQL, 
+            N'@NewVal VARCHAR(255), @OwnerId INT', 
+            @NewVal, @OwnerId;
+
+        -- Success response
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+   END TRY
+
+   BEGIN CATCH
+    SET @RetCode = -1;
+    SET @ERRNO = 'RUNTIME_ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+    SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+  END CATCH
+
+END;
+GO
+
+select * from Owners;
+
+EXEC UpdateOwners 'name','hellina','10'
+
+
+-- 2. Update Manager Details
+GO
+CREATE PROCEDURE UpdateManagers
+    @ColumnName VARCHAR(128),
+    @NewVal VARCHAR(255), -- Most columns are VARCHAR(255), INT handled below
+    @ManagerId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+    IF @ColumnName IS NULL OR @ManagerId IS NULL OR (@NewVal IS NULL AND @ColumnName != 'assignedStore')
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'NULL_PARAM';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+		RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Managers') AND name = @ColumnName)
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'INVALID_COLUMN: ' + @ColumnName;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+		RETURN;
+    END
+
+    IF @ColumnName = 'managerID'
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'IDENTITY_UPDATE: Cannot update managerID';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
+
+    IF @ColumnName = 'email' AND @NewVal NOT LIKE '%@%'
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'EMAIL_FORMAT: Email must contain @';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
+
+    IF @ColumnName IN ('email', 'username') AND EXISTS 
+	(
+        SELECT 1 
+		FROM Managers 
+		WHERE (@ColumnName = 'email' AND email = @NewVal) OR (@ColumnName = 'username' AND username = @NewVal)  --Match duplicate email/username 
+        AND managerID != @ManagerId     -- But not with the column being updated itself
+	)
+    BEGIN
+        SET @RetCode = -1;
+		SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate ' + @ColumnName;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
+
+    IF @ColumnName = 'assignedStore' AND @NewVal IS NOT NULL AND EXISTS
+	(
+		SELECT 1 FROM Managers 
+		WHERE assignedStore = 
+		CAST(@NewVal AS INT) AND managerID != @ManagerId
+	) 
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate assignedStore';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
+   
+    IF @ColumnName = 'businessID'
+	AND  NOT EXISTS 
+	(
+		 SELECT 1 
+		 FROM Business
+		 WHERE BusinessID = CAST(@NewVal AS INT) AND @ColumnName = 'businessID'
+	) 
+    BEGIN
+		SET @RetCode = -1;
+		SET @ERRNO = 'FK_VIOLATION: Invalid ' + 'businessID';
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+		RETURN;
+    END
+
+	IF @ColumnName = 'assignedStore' AND @NewVal iS NOT NULL
+	AND NOT EXISTS
+	(
+		SELECT 1
+		FROM Stores
+		WHERE StoreID = @NewVal
+	)
+	BEGIN
+		SET @RetCode = -1; 
+		SET @ERRNO = 'FK_VIOLATION: Invalid ' + 'businessID';
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+		RETURN;
+    END
+
+
+    IF NOT EXISTS (SELECT 1 FROM Managers WHERE managerID = @ManagerId)
+    BEGIN
+        SET @RetCode = -1;
+		SET @ERRNO = 'NO_RECORD: ManagerID ' + CAST(@ManagerId AS VARCHAR(10));
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
+
+    BEGIN TRY
+        SET @SQL = 'UPDATE Managers SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE managerID = @ManagerId';
+        EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @ManagerId INT', @NewVal, @ManagerId;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+    END TRY
+    BEGIN CATCH
+        SET @RetCode = -1;
+        SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+    END CATCH
+END;
+GO
+
+Select * from Managers
+
+EXEC UpdateManagers 'name', 'Aamirah Tariq Khan', 4    
+Select * from Managers
+
+-- 3. Update Business Details
+GO
+CREATE PROCEDURE UpdateBusiness
+	@ColumnName VARCHAR(128),
+	@NewVal VARCHAR(255),
+	@BusinessId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE Business SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE BusinessId  = @BusinessId ';
+        EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @BusinessId INT', @NewVal, @BusinessId;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+        SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
+
+Select * from Business
+
+--will fail
+EXEC UpdateBusiness 'OwnerID', '122', 4
+Select * from Business
+
+--Will succeed
+Select * from Business
+
+EXEC UpdateBusiness 'BusinessName', 'Khan Enterprises', 1
+Select * from Business
+
+-- 4. Update Store Details
+GO
+CREATE PROCEDURE UpdateStores
+	@ColumnName VARCHAR(128),
+	@NewVal VARCHAR(255),
+	@StoreId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE Stores SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE StoreId  = @StoreId ';
+		EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @StoreId INT', @NewVal, @StoreId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
+
+--5. Update Product Details
+GO
+CREATE PROCEDURE UpdateProducts
+	@ColumnName VARCHAR(128),
+	@NewVal VARCHAR(255),
+	@ProductId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE Products SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE ProductId  = @ProductId ';
+		EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @ProductId INT', @NewVal, @ProductId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
+
+--6. Update Inventory Details
+GO
+CREATE PROCEDURE UpdateInventory
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@WarehouseId INT,
+	@ProductId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE Inventory SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE warehouseID  = @WarehouseId AND ProductID = @ProductId';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @WarehouseId INT, @ProductId INT', @NewVal, @WarehouseId, @ProductId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
+
+--7. Update Stock Requests
+GO
+CREATE PROCEDURE UpdateStockRequests
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@RequestingStoreId INT,
+	@ProductId INT,
+	@RequestDate DATETIME
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE StockRequests SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE RequestingStoreId  = @RequestingStoreId AND ProductID = @ProductId AND request_date = @RequestDate';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @RequestingStoreId INT, @ProductId INT, @RequestDate DATETIME', @NewVal, @RequestingStoreId, @ProductId, @RequestDate;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+
+--8. Update Notifications
+GO
+CREATE PROCEDURE UpdateNotifications
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@NotificationId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE Notifications SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE NotificationId  = @NotificationId';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @NotificationId INT', @NewVal, @NotificationId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+
+--9. Update Notification Type
+GO
+CREATE PROCEDURE UpdateNotificationType
+	@ColumnName VARCHAR(128),
+	@NewVal VARCHAR(255),
+	@NotificationId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE NotificationType SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE NotificationId  = @NotificationId';
+		EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @NotificationId INT', @NewVal, @NotificationId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+
+--10. Update Read Status
+GO
+CREATE PROCEDURE UpdateReadStatus
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@StatusId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE read_status SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE StatusId  = @StatusId';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @StatusId INT', @NewVal, @StatusId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+
+--11. Update Request Status
+GO
+CREATE PROCEDURE UpdateRequestStatus
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@StatusId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+
+	BEGIN TRY
+		SET @SQL = 'UPDATE RequestStatus SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE StatusId  = @StatusId';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @StatusId INT', @NewVal, @StatusId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
+
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+
+
 -- User Accounts and Access
 SELECT * FROM Owners;
 SELECT * FROM Managers;
@@ -212,7 +710,7 @@ SELECT * FROM Notifications;
 
 
 -- SELECTION QUERIES
---  1. Verify Username and Password, return user details
+--  1. Verify Username and Password, return user details if valid
 
 --  2. Get Business details if Owner
 
