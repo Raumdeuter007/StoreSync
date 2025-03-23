@@ -712,23 +712,141 @@ SELECT * FROM Notifications;
 -- SELECTION QUERIES
 --  1. Verify Username and Password, return user details if valid
 
+CREATE PROCEDURE VerifyUserLogin 
+    @username VARCHAR(255), 
+    @password VARCHAR(255)
+AS
+BEGIN 
+	 
+    IF EXISTS (SELECT 1 FROM Owners WHERE username = @username AND password = @Password)
+    BEGIN
+        SELECT ownerID,name,email,username
+        FROM Owners
+	WHERE username = @username AND password = @password;
+    END
+     
+    ELSE IF EXISTS (SELECT 1 FROM Managers WHERE username = @username AND password = @Password)
+    BEGIN
+        SELECT managerID, name, email, username, businessID, assignedStore
+        FROM Managers 
+        WHERE username = @username AND password = @password;
+    END
+    ELSE
+    BEGIN
+        PRINT 'Invalid username or password';
+    END
+END;
+GO
+
 --  2. Get Business details if Owner
+
+CREATE PROCEDURE Business_detailOfOwner @OwnerID INT
+AS
+BEGIN
+   SELECT O.ownerID, O.username,B.BusinessID,B.BusinessName 
+   FROM Owners O LEFT JOIN Business B ON O.ownerID = B.OwnerID  
+   WHERE O.ownerID = @OwnerID;
+
+	
+END;	
+GO
 
 --  3. Get stores/warehouses of the Business (for Owner)
 
+CREATE PROCEDURE StoresWarehouse_ofOwner @OwnerID INT
+AS
+BEGIN
+    SELECT O.ownerID, O.username,B.BusinessID, S.StoreID,S.StoreName 
+    FROM Owners O JOIN Business B ON O.ownerID = B.OwnerID JOIN Stores S
+    ON B.BusinessID=S.BusinessID
+    WHERE O.ownerID = @OwnerID;
+
+	
+END;
+GO
+
 --  4. Get store details for manager
+
+CREATE PROCEDURE StoreDetailsOfManagers @ManagerID INT
+AS
+BEGIN
+    SELECT M.ManagerID, M.name, M.BusinessID,S.StoreID,S.StoreName
+    FROM Managers M LEFT JOIN Stores S ON M.assignedStore = S.StoreID   
+    WHERE M.ManagerID = @ManagerID;
+
+	
+END;
+GO
 
 --  5. Get Inventory Stock Details for Stores
 
+CREATE PROCEDURE InventoryStockDetails
+AS
+BEGIN
+    SELECT warehouseID,ProductID,stockQuantity
+    FROM  Inventory;
+END;
+GO
+
 --  6. Get All Stock Requests for a Store (may be from manager or owner)
+
+CREATE PROCEDURE stockRequestsOfStore @StoreID INT
+AS
+BEGIN
+     SELECT RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date,approvedby,fullfillmentdate
+     FROM StockRequests
+     WHERE RequestingStoreID = @StoreID; 
+END;
+GO
 
 --  7. Get Stock Requests that have not been resolved (pending), sort by request date.
 
+CREATE PROCEDURE PendingStockRequests  
+AS
+BEGIN
+     SELECT * FROM APendingReqs
+     ORDER BY request_date;
+     
+
+END;
+GO
 --  8. Get Stock Requests for all stores (Owner)
+
+CREATE PROCEDURE StockRequestsForOwner @OwnerID INT
+AS
+BEGIN
+    SELECT SR.RequestingStoreID,SR.ProductID,SR.RequestedQuantity,SR.ReqStatus,SR.request_date,SR.approvedby,SR.fullfillmentdate
+    FROM StockRequests SR JOIN Stores S ON SR.RequestingStoreID = S.StoreID
+    JOIN Business B ON S.BusinessID = B.BusinessID
+    WHERE B.OwnerID = @OwnerID;
+END;
+GO
 
 --  9. Get Notifications for a certain store.
 
+CREATE PROCEDURE NotificationsOfStore @StoreID INT
+AS
+BEGIN
+    
+    SELECT NotificationID,RecipientUserID,n_Type,Content,ReadStatus
+	FROM Notifications
+	WHERE RecipientUserID = (SELECT B.OwnerID
+	                         FROM Business B JOIN Stores S ON B.BusinessID=S.BusinessID
+	                         WHERE S.StoreID= @StoreID);
+END;
+GO
+
 -- 10. Retrieve the current stock levels of all products in a specific warehouse.
+	
+CREATE PROCEDURE StockDetailsInWarehouse @warehouseID INT
+AS
+BEGIN
+    SELECT I.warehouseID,I.ProductID,P.ProductName, I.stockQuantity
+	FROM  Inventory I JOIN Products P ON I.ProductID = P.ProductID
+	WHERE warehouseID = @warehouseID;
+END;
+GO
+
 
 -- 11. Get a list of all products that are below the reorder level (minimum 5) in a given warehouse.
 
