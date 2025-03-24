@@ -36,15 +36,15 @@ CREATE TABLE Managers(
 	email VARCHAR(255) UNIQUE NOT NULL,
 	username VARCHAR(255) UNIQUE NOT NULL,
 	password VARCHAR(255) NOT NULL,
-	businessID INT NOT NULL,
-	assignedStore INT DEFAULT(NULL)
+	businessID INT NOT NULL
+	--assignedStore INT DEFAULT(NULL)
 );
 ALTER TABLE Managers ADD CONSTRAINT PK_Man PRIMARY KEY(managerID);
 
 -- create unique index manually to only treat non-nulls as duplicates and allow multiple nulls
-CREATE UNIQUE NONCLUSTERED INDEX idx_unique_assignedStore
-ON Managers(assignedStore)
-WHERE assignedStore IS NOT NULL;
+--CREATE UNIQUE NONCLUSTERED INDEX idx_unique_assignedStore
+--ON Managers(assignedStore)
+--WHERE assignedStore IS NOT NULL;
 
 /*Business Management for Owners  */
 
@@ -146,7 +146,7 @@ ALTER TABLE Notifications ADD CONSTRAINT PK_Notifications PRIMARY KEY (Notificat
 ALTER TABLE Owners ADD CONSTRAINT Ch_oemail CHECK (email LIKE '%@%');
 
 --Constraints added to 'Managers'
-ALTER TABLE Managers ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID) ON DELETE SET NULL;
+--ALTER TABLE Managers ADD CONSTRAINT FK_Users2 FOREIGN KEY (assignedstore) REFERENCES Stores(storeID) ON DELETE SET NULL;
 ALTER TABLE Managers ADD CONSTRAINT FK_BusID FOREIGN KEY (businessID) REFERENCES Business(businessID);
 ALTER TABLE Managers ADD CONSTRAINT Ch_memail CHECK (email LIKE '%@%');
 
@@ -695,7 +695,6 @@ GO
 --	IF EXISTS (SELECT * FROM Managers WHERE ManagerID = @ManagerID AND assignedStore IS NULL)
 --	BEGIN
 --		UPDATE Stores SET ManagerID = @ManagerID WHERE StoreID = @StoreID;
---		UPDATE Managers SET assignedStore = @StoreID WHERE managerID = @ManagerID;
 --	END;
 --	ELSE
 --		return cast('Can not update manager: Already assigned.' as int);
@@ -876,18 +875,18 @@ VALUES
 ('Gourmet Delights', '202 Fine Dining Rd, IL', 5),  
 ('Secure Solutions', '303 Cyber Park, WA', 6);
 
-INSERT INTO Managers (name, email, username, password, businessID, assignedStore)  
+INSERT INTO Managers (name, email, username, password, businessID)  
 VALUES  
-('Alice Johnson', 'alice.johnson@email.com', 'aliceJ', 'securepass1', 1, NULL),  
-('Bob Smith', 'bob.smith@email.com', 'bobS', 'securepass2', 1, NULL),  
-('Charlie Brown', 'charlie.brown@email.com', 'charlieB', 'securepass3', 2, NULL),  
-('Diana White', 'diana.white@email.com', 'dianaW', 'securepass4', 3, NULL),  
-('Ethan Green', 'ethan.green@email.com', 'ethanG', 'securepass5', 3, NULL),  
-('Fiona Black', 'fiona.black@email.com', 'fionaB', 'securepass6', 4, NULL),  
-('George Harris', 'george.harris@email.com', 'georgeH', 'securepass7', 4, NULL),  
-('Hannah King', 'hannah.king@email.com', 'hannahK', 'securepass8', 5, NULL),  
-('Ian Wright', 'ian.wright@email.com', 'ianW', 'securepass9', 6, NULL),  
-('Julia Adams', 'julia.adams@email.com', 'juliaA', 'securepass10', 6, NULL);
+('Alice Johnson', 'alice.johnson@email.com', 'aliceJ', 'securepass1', 1),  
+('Bob Smith', 'bob.smith@email.com', 'bobS', 'securepass2', 1),  
+('Charlie Brown', 'charlie.brown@email.com', 'charlieB', 'securepass3', 2),  
+('Diana White', 'diana.white@email.com', 'dianaW', 'securepass4', 3),  
+('Ethan Green', 'ethan.green@email.com', 'ethanG', 'securepass5', 3),  
+('Fiona Black', 'fiona.black@email.com', 'fionaB', 'securepass6', 4),  
+('George Harris', 'george.harris@email.com', 'georgeH', 'securepass7', 4),  
+('Hannah King', 'hannah.king@email.com', 'hannahK', 'securepass8', 5),  
+('Ian Wright', 'ian.wright@email.com', 'ianW', 'securepass9', 6),  
+('Julia Adams', 'julia.adams@email.com', 'juliaA', 'securepass10', 6);
 
 
 -- Insert exactly 7 stores, each assigned to a unique valid manager (1 to 10)
@@ -913,9 +912,9 @@ GO
 CREATE VIEW AllWInventoryLvls AS
 (
 	Select I.warehouseID,S.StoreName AS [Warehouse Name], I.ProductID, P.ProductName, I.stockQuantity, S.ManagerID
-	from Inventory AS I INNER JOIN Stores as S
+	from Inventory AS I JOIN Stores as S
 	ON I.warehouseID = S.StoreID
-	INNER JOIN Products AS P
+	JOIN Products AS P
 	ON I.ProductID = P.ProductID 
 )
 
@@ -966,7 +965,7 @@ GO
 -- RequestingStoreID, StoreName, ProductID, ProductName, RequestedQuantity, RequestStatus, RequestDate
 GO
 
---Shows all requests for all stores
+-- Shows all requests for all stores
 CREATE VIEW AStockReqs AS
 (	
 	SELECT SR.RequestID, S.StoreID AS RequestingStoreID, S.StoreName, P.ProductID, P.ProductName, SR.RequestedQuantity, SR.ReqStatus, SR.fullfillmentdate, SR.request_date, S.ManagerID
@@ -980,7 +979,7 @@ GO
 GO
 --Use StoreManager to find store as Manger <--> store
 CREATE PROCEDURE ShowPendingRequests (
-@SToreManager INT
+@StoreManager INT
 )
 AS
 BEGIN
@@ -990,7 +989,7 @@ BEGIN
 	(
 		SELECT 1
 		FROM AStockReqs AS ASR
-		WHERE ASR.ManagerID = @SToreManager
+		WHERE ASR.ManagerID = @StoreManager
 	)
 	BEGIN
 		SET @RetCode = -1
@@ -1000,9 +999,9 @@ BEGIN
 	END
 
 	BEGIN TRY
-		SELECT requestId, RequestingStoreID, StoreName, ProductID,ProductName, RequestedQuantity, ReqStatus, request_date,ManagerID
+		SELECT requestId, RequestingStoreID, StoreName, ProductID, ProductName, RequestedQuantity, ReqStatus, request_date, ManagerID
 		FROM AStockReqs AS ASR
-		WHERE ASR.ManagerID = @SToreManager AND ASR.ReqStatus = 'Pending'
+		WHERE ASR.ManagerID = @StoreManager AND ASR.ReqStatus = 'Pending'
 		
 		-- Return success response --> retcode = 0, ERRNO = NULL
 		SELECT @RetCode AS RetCode, @ERRNO as ERRNO
@@ -1056,7 +1055,7 @@ BEGIN
 		RETURN     --Return early
 	END
 	BEGIN TRY
-		SELECT NotificationID, RecipientUserID, NotificationType,MessageContent, CreatedAt,ReadStatus
+		SELECT NotificationID, RecipientUserID, NotificationType, MessageContent, CreatedAt, ReadStatus
 		FROM AUnreadNotifications AS AURN
 		WHERE AURN.RecipientUserID = @OwnerID
 
@@ -1074,9 +1073,9 @@ GO
 
 
 -- SELECTION QUERIES
---  1. Verify Username and Password, return user details if valid
+--  1. Verify Owner Username and Password, return owner details if valid
 GO
-CREATE PROCEDURE VerifyUserLogin 
+CREATE PROCEDURE VerifyOwnerLogin 
     @username VARCHAR(255), 
     @password VARCHAR(255)
 AS
@@ -1084,14 +1083,26 @@ BEGIN
 	 
     IF EXISTS (SELECT 1 FROM Owners WHERE username = @username AND password = @Password)
     BEGIN
-        SELECT ownerID,name,email,username
+        SELECT ownerID, name, email, username
         FROM Owners
 	WHERE username = @username AND password = @password;
     END
-     
-    ELSE IF EXISTS (SELECT 1 FROM Managers WHERE username = @username AND password = @Password)
+    ELSE
     BEGIN
-        SELECT managerID, name, email, username, businessID, assignedStore
+        PRINT 'Invalid username or password';
+    END
+END;
+GO
+
+-- 2. Verify Manager Username and Password
+CREATE PROCEDURE VerifyManagerLogin 
+    @username VARCHAR(255), 
+    @password VARCHAR(255)
+AS
+BEGIN  
+    IF EXISTS (SELECT 1 FROM Managers WHERE username = @username AND password = @Password)
+    BEGIN
+        SELECT managerID, name, email, username, businessID
         FROM Managers 
         WHERE username = @username AND password = @password;
     END
@@ -1107,11 +1118,9 @@ GO
 CREATE PROCEDURE Business_detailOfOwner @OwnerID INT
 AS
 BEGIN
-   SELECT O.ownerID, O.username,B.BusinessID,B.BusinessName 
+   SELECT O.ownerID, O.username, B.BusinessID, B.BusinessName 
    FROM Owners O LEFT JOIN Business B ON O.ownerID = B.OwnerID  
    WHERE O.ownerID = @OwnerID;
-
-	
 END;	
 GO
 
@@ -1120,9 +1129,9 @@ GO
 CREATE PROCEDURE StoresWarehouse_ofOwner @OwnerID INT
 AS
 BEGIN
-    SELECT O.ownerID, O.username,B.BusinessID, S.StoreID,S.StoreName 
+    SELECT O.ownerID, O.username, B.BusinessID, S.StoreID, S.StoreName 
     FROM Owners O JOIN Business B ON O.ownerID = B.OwnerID JOIN Stores S
-    ON B.BusinessID=S.BusinessID
+    ON B.BusinessID = S.BusinessID
     WHERE O.ownerID = @OwnerID;
 
 	
@@ -1134,8 +1143,8 @@ GO
 CREATE PROCEDURE StoreDetailsOfManagers @ManagerID INT
 AS
 BEGIN
-    SELECT M.ManagerID, M.name, M.BusinessID,S.StoreID,S.StoreName
-    FROM Managers M LEFT JOIN Stores S ON M.assignedStore = S.StoreID   
+    SELECT M.ManagerID, M.name, M.BusinessID, S.StoreID,S.StoreName
+    FROM Managers M JOIN Stores S ON M.managerID = S.ManagerID   
     WHERE M.ManagerID = @ManagerID;
 
 	
@@ -1144,11 +1153,13 @@ GO
 
 --  5. Get Inventory Stock Details for Stores
 
-CREATE PROCEDURE InventoryStockDetails
+CREATE PROCEDURE InventoryStockDetails @StoreID INT
 AS
 BEGIN
-    SELECT warehouseID,ProductID,stockQuantity
-    FROM  Inventory;
+    SELECT warehouseID, Products.ProductID, ProductName, stockQuantity 
+    FROM Inventory 
+	JOIN Products ON Products.ProductID = Inventory.ProductID
+	WHERE warehouseID = @StoreID;
 END;
 GO
 
@@ -1157,7 +1168,7 @@ GO
 CREATE PROCEDURE stockRequestsOfStore @StoreID INT
 AS
 BEGIN
-     SELECT RequestingStoreID,ProductID,RequestedQuantity,ReqStatus,request_date,approvedby,fullfillmentdate
+     SELECT RequestingStoreID, ProductID, RequestedQuantity, ReqStatus, request_date, approvedby, fullfillmentdate
      FROM StockRequests
      WHERE RequestingStoreID = @StoreID; 
 END;
@@ -1165,13 +1176,13 @@ GO
 
 --  7. Get Stock Requests that have not been resolved (pending), sort by request date.
 
-CREATE PROCEDURE PendingStockRequests  
+CREATE PROCEDURE PendingStockRequests @StoreID INT
 AS
 BEGIN
-     SELECT * FROM APendingReqs
+     SELECT *
+	 FROM AStockReqs
+	 WHERE RequestingStoreID = @StoreID
      ORDER BY request_date;
-     
-
 END;
 GO
 --  8. Get Stock Requests for all stores (Owner)
@@ -1179,24 +1190,24 @@ GO
 CREATE PROCEDURE StockRequestsForOwner @OwnerID INT
 AS
 BEGIN
-    SELECT SR.RequestingStoreID,SR.ProductID,SR.RequestedQuantity,SR.ReqStatus,SR.request_date,SR.approvedby,SR.fullfillmentdate
+    SELECT SR.RequestingStoreID, SR.ProductID, SR.RequestedQuantity, SR.ReqStatus, 
+		SR.request_date, SR.approvedby, SR.fullfillmentdate
     FROM StockRequests SR JOIN Stores S ON SR.RequestingStoreID = S.StoreID
     JOIN Business B ON S.BusinessID = B.BusinessID
-    WHERE B.OwnerID = @OwnerID;
+    WHERE B.OwnerID = @OwnerID
+	ORDER BY S.storeID;
 END;
 GO
 
---  9. Get Notifications for a certain store.
+--  9. Get Notifications for an owner.
 
-CREATE PROCEDURE NotificationsOfStore @StoreID INT
+CREATE PROCEDURE NotificationsOfStore @OwnerID INT
 AS
 BEGIN
     
-    SELECT NotificationID,RecipientUserID,n_Type,Content,ReadStatus
+    SELECT NotificationID, RecipientUserID, n_Type, Content, ReadStatus
 	FROM Notifications
-	WHERE RecipientUserID = (SELECT B.OwnerID
-	                         FROM Business B JOIN Stores S ON B.BusinessID=S.BusinessID
-	                         WHERE S.StoreID= @StoreID);
+	WHERE RecipientUserID = @OwnerID
 END;
 GO
 
@@ -1205,7 +1216,7 @@ GO
 CREATE PROCEDURE StockDetailsInWarehouse @warehouseID INT
 AS
 BEGIN
-    SELECT I.warehouseID,I.ProductID,P.ProductName, I.stockQuantity
+    SELECT I.warehouseID, I.ProductID, P.ProductName, I.stockQuantity
 	FROM  Inventory I JOIN Products P ON I.ProductID = P.ProductID
 	WHERE warehouseID = @warehouseID;
 END;
@@ -1215,15 +1226,13 @@ GO
 -- 11. Get a list of all products that are below the reorder level (minimum 5) in a given warehouse.
 
 -- Gets all products in each inventory along with associated Warehouse details
-
-USE InventoryManagementSystem
-GO
+-- NOTE: Quite Similar to AWIL, Should remove one of the two
 CREATE VIEW ProductsInInventory AS
 (   --Assumption: Every warehouse has an inventory
-	SELECT S.BusinessID, I.warehouseID,S.StoreName as [WarehouseName], I.ProductID, P.ProductName, I.stockQuantity     --businessId here only for join purposes. DON'T select from here
-	FROM Inventory AS I INNER JOIN Stores AS S
+	SELECT S.BusinessID, I.warehouseID, S.StoreName as [WarehouseName], I.ProductID, P.ProductName, I.stockQuantity     --businessId here only for join purposes. DON'T select from here
+	FROM Inventory AS I JOIN Stores AS S
 	ON I.warehouseID = S.StoreID 
-	INNER JOIN Products AS P
+	JOIN Products AS P
 	ON I.ProductID = P.ProductID
 )
 GO
@@ -1250,14 +1259,13 @@ EXEC GetProductsToReorder 1
 -- 12. Retrieve the total stock of a particular product across all warehouses owned by a given Business
 
 GO
-
 CREATE PROCEDURE StockAcrossWarehouses (
-@BusinessId INT,
-@ProductId INT
+	@BusinessId INT,
+	@ProductId INT
 )
 AS
 BEGIN
-	SELECT PII.ProductID, PII.ProductName ,SUM(PII.stockQuantity) as [Total Stock Across Warehouses]
+	SELECT PII.ProductID, PII.ProductName, SUM(PII.stockQuantity) as [Total Stock Across Warehouses]
 	FROM ProductsInInventory AS PII
 	WHERE PII.BusinessID = @BusinessId AND PII.ProductID = @ProductId
 	GROUP BY PII.ProductID, PII.ProductName
@@ -1301,16 +1309,16 @@ EXEC StockAcrossWarehouses @businessId = 2, @ProductID = 1
 
 
 -- 13. Get the stock details of a specific product in a specific warehouse.
-
+GO
 CREATE PROCEDURE StockDetails(
-@WarehouseId INT,
-@ProductId  INT
+	@WarehouseId INT,
+	@ProductId  INT
 )
 AS
 BEGIN
 	SELECT AWIL.ProductID, AWIL.ProductName, AWIL.stockQuantity
 	FROM AllWInventoryLvls AS AWIL
-	WHERE ProductID = @ProductId  AND warehouseID = @WarehouseId
+	WHERE ProductID = @ProductId AND warehouseID = @WarehouseId
 END
 GO
 EXEC StockDetails @WarehouseId = 1, @ProductId = 4
@@ -1321,14 +1329,14 @@ GO
 GO
 
 CREATE PROCEDURE FetchStockRequest(
-@SToreManager INT,
-@RequestID INT
+	@StoreManager INT,
+	@RequestID INT
 )
 AS
 BEGIN
 	SELECT RequestID, ProductID as [RequestedProductId], ProductName , RequestedQuantity, ReqStatus
 	FROM AStockReqs as ASR
-	WHERE ASR.ManagerID = @SToreManager AND ASR.RequestID = @RequestID    --Without table name(ASR) appended infinite recursion occurs. Explore why.
+	WHERE ASR.ManagerID = @StoreManager AND ASR.RequestID = @RequestID    --Without table name(ASR) appended infinite recursion occurs. Explore why.
 	-- IGNORE: get result from  ShowPendingRequests  Procedure and then filter by @RequestID
 	--Declare @AllReqsForManager table     
 	--(
@@ -1350,7 +1358,7 @@ select * from StockRequests
 -- 16. Fetch all completed stock requests along with fulfillment dates for a given time period
 
 GO
---predefined time period of last 1 year(i.e all reqs during the past 1 year)
+-- predefined time period of last 1 year(i.e all reqs during the past 1 year)
 CREATE PROCEDURE CompletedReqsPastyear (
 @ManagerID INT
 )
@@ -1358,12 +1366,14 @@ AS
 BEGIN
 	DECLARE @StatusIDCompleted INT = (SELECT StatusID FROM RequestStatus WHERE StatusName = 'Completed')   --map 'completed' to corrospomding status id to cmp with  ASR.ReqStatus
 
-	SELECT RequestID, RequestingStoreID,StoreName,ProductID,ProductName,RequestedQuantity,ReqStatus,fullfillmentdate,request_date
+	SELECT RequestID, RequestingStoreID, StoreName, ProductID, ProductName,
+		RequestedQuantity, ReqStatus, fullfillmentdate, request_date
 	FROM AStockReqs AS ASR
-	WHERE ASR.ReqStatus = @StatusIDCompleted AND ASR.ManagerID = 1 AND ASR.fullfillmentdate >= DATEADD(YEAR,-1,GETDATE())
+	WHERE ASR.ReqStatus = @StatusIDCompleted AND 
+	ASR.ManagerID = @ManagerID AND ASR.fullfillmentdate >= DATEADD(YEAR,-1,GETDATE())
 END
 
---Get all requests fulfilled this year
+-- Get all requests fulfilled this year
 GO
 CREATE PROCEDURE CompletedReqsThisYear  (
 @ManagerID INT
@@ -1372,9 +1382,11 @@ AS
 BEGIN
 	DECLARE @StatusIDCompleted INT = (SELECT StatusID FROM RequestStatus WHERE StatusName = 'Completed')   --map 'completed' to corrospomding status id to cmp with  ASR.ReqStatus
 
-	SELECT RequestID, RequestingStoreID,StoreName,ProductID,ProductName,RequestedQuantity,ReqStatus,fullfillmentdate,request_date
+	SELECT RequestID, RequestingStoreID, StoreName, ProductID, ProductName,
+		RequestedQuantity, ReqStatus, fullfillmentdate, request_date
 	FROM AStockReqs AS ASR
-	WHERE ASR.ReqStatus = @StatusIDCompleted AND ASR.ManagerID = 1 AND YEAR(ASR.fullfillmentdate) = DATEADD(YEAR,-1,GETDATE())
+	WHERE ASR.ReqStatus = @StatusIDCompleted AND 
+	ASR.ManagerID = @ManagerID AND YEAR(ASR.fullfillmentdate) = DATEADD(YEAR,-1,GETDATE())
 END
 
 GO
@@ -1387,17 +1399,18 @@ AS
 BEGIN
 	DECLARE @StatusIDCompleted INT = (SELECT StatusID FROM RequestStatus WHERE StatusName = 'Completed')   --map 'completed' to corrospomding status id to cmp with  ASR.ReqStatus
 
-	SELECT RequestID, RequestingStoreID,StoreName,ProductID,ProductName,RequestedQuantity,ReqStatus,fullfillmentdate,request_date
+	SELECT RequestID, RequestingStoreID, StoreName, ProductID, ProductName,
+		RequestedQuantity, ReqStatus, fullfillmentdate, request_date
 	FROM AStockReqs AS ASR
 	WHERE ASR.ReqStatus = @StatusIDCompleted 
-	AND ASR.ManagerID = 1 
+	AND ASR.ManagerID = @ManagerID
 	AND ASR.fullfillmentdate BETWEEN @PeriodStart AND @PeriodEnd
 END
 
 -- TODO: SELECTION QUERIES FOR FOLLOWING:
 --Same for month, Quarter(current, previous,Q1,Q2,Q3,Q4, comparision b/w Quarters)
 
-
+-- WILL CHECK THESE 2 LATER
 -- 17. Get the total number of stock requests made by a specific store in the last month
 GO
 CREATE PROCEDURE CompletedReqsPastMonth  (
@@ -1436,7 +1449,7 @@ CREATE PROCEDURE TopReqestedProdsAtStore_Y (
 )
 AS
 BEGIN
-	DECLARE @RequestingStoreID INT = (SELECT assignedStore FROM Managers WHERE ManagerID = @ManagerId);   --get the store Assigned to the manager
+	DECLARE @RequestingStoreID INT = (SELECT StoreID FROM Stores WHERE ManagerID = @ManagerId);   --get the store Assigned to the manager
 	
 	WITH ProductRequestCounts AS
 	(
@@ -1467,7 +1480,7 @@ CREATE PROCEDURE TopReqestedProdsAtStore_M (
 )
 AS
 BEGIN
-	DECLARE @RequestingStoreID INT = (SELECT assignedStore FROM Managers WHERE ManagerID = @ManagerId);   --get the store Assigned to the manager
+	DECLARE @RequestingStoreID INT = (SELECT StoreID FROM Stores WHERE ManagerID = @ManagerId);   --get the store Assigned to the manager
 	
 	WITH ProductRequestCounts AS
 	(
@@ -1571,7 +1584,7 @@ GO
 CREATE PROCEDURE delete_manager_withNoAssignedStore @ManagerID INT
 AS
 BEGIN
-    IF (SELECT assignedStore FROM Managers WHERE ManagerID = @ManagerID) IS NULL
+    IF EXISTS (SELECT StoreID FROM Stores WHERE ManagerID = @ManagerID)
 	BEGIN
        DELETE FROM Managers WHERE ManagerID = @ManagerID;
     END
