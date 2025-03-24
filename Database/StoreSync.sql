@@ -1584,7 +1584,7 @@ GO
 CREATE PROCEDURE delete_manager_withNoAssignedStore @ManagerID INT
 AS
 BEGIN
-    IF EXISTS (SELECT StoreID FROM Stores WHERE ManagerID = @ManagerID)
+    IF NOT EXISTS (SELECT StoreID FROM Stores WHERE ManagerID = @ManagerID)
 	BEGIN
        DELETE FROM Managers WHERE ManagerID = @ManagerID;
     END
