@@ -440,8 +440,150 @@ app.delete("/notification/:id", (req, res) =>
             });
         }
     })
-}
-)
+});
+
+const login_auth = express.urlencoded({ 
+    extended : false,
+    limit: 10000,
+    parameterLimit: 2
+});
+
+app.post("/owner/login", login_auth, (req, res) =>
+{
+    const { username, password } = req.body;
+    sql.connect(config, (err) =>
+    {
+        if (err)
+        {
+            console.log(err);
+            res.json({ message: "Could not connect to Database", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("username", username)
+            .input("password", password)
+            .execute("VerifyOwnerLogin", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    if (record.recordsets.length === 0)
+                        res.status(404).json({ message: "Incorrect Credentials"});
+                    else
+                    {
+                        let business = new sql.Request();
+                        business
+                        .input("OwnerID", record.recordset[0].ownerID)
+                        .execute("Business_detailOfOwner", (err, rec) =>
+                        {
+                            if (err)
+                            {
+                                console.log(err)
+                                res.json({ message: "Could not execute query" });
+                            }
+                            else
+                            {
+                                res.json({ message: "Login successful", business: rec.recordset[0], 
+                                    user: record.recordset[0]});
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    })
+});
+
+app.post("/manager/login", login_auth, (req, res) =>
+{
+    const { username, password } = req.body;
+    sql.connect(config, (err) =>
+    {
+        if (err)
+        {
+            console.log(err);
+            res.json({ message: "Could not connect to Database", err});
+        }
+        else
+        {
+            let request = new sql.Request();
+            request
+            .input("username", username)
+            .input("password", password)
+            .execute("VerifyManagerLogin", (err, record) => {
+                if (err)
+                {
+                    console.log(err);
+                    res.status(505).json({ message: "Could not execute query", err});
+                }
+                else
+                {
+                    if (record.recordsets.length === 0)
+                        res.status(404).json({ message: "Incorrect Credentials"});
+                    else
+                    {
+                        let store = new sql.Request();
+                        store
+                        .input("ManagerID", record.recordset[0].managerID)
+                        .execute("StoreDetailsOfManagers", (err, rec) =>
+                        {
+                            if (err)
+                            {
+                                console.log(err)
+                                res.json({ message: "Could not execute query" });
+                            }
+                            else
+                            {
+                                console.log(rec);
+                                if (rec.recordset.length !== 0)
+                                {
+                                    let store = new sql.Request();
+                                    store
+                                    .input("StoreID", rec.recordset[0].StoreID)
+                                    .execute("InventoryStockDetails", (err, reco) =>
+                                    {
+                                        if (err)
+                                        {
+                                            console.log(err)
+                                            res.json({ message: "Could not execute query" });
+                                        }
+                                        else
+                                        {    
+                                            res.json({ message: "Login successful", Store: rec.recordset[0], 
+                                                user: record.recordset[0], inventory: reco.recordset});
+                                        }
+                                    });
+                                }
+                                else
+                                {
+                                    res.json({ message: "Login successful", Store: rec.recordset[0], 
+                                        user: record.recordset[0]});
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    })
+});
+
+const get_req = express.urlencoded({ 
+    extended : false,
+    limit: 10000,
+    parameterLimit: 0
+});
+
+app.get("/owner/stores", get_req, (req, res) =>
+{
+
+});
+
 
 
 app.listen(PORT, () => {

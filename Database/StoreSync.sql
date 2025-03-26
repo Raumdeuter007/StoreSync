@@ -1143,7 +1143,7 @@ GO
 CREATE PROCEDURE StoreDetailsOfManagers @ManagerID INT
 AS
 BEGIN
-    SELECT M.ManagerID, M.name, M.BusinessID, S.StoreID,S.StoreName
+    SELECT M.ManagerID, M.name, M.BusinessID, S.StoreID, S.StoreName
     FROM Managers M JOIN Stores S ON M.managerID = S.ManagerID   
     WHERE M.ManagerID = @ManagerID;
 
