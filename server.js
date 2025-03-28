@@ -2,6 +2,7 @@ const express = require('express');
 require('dotenv').config();
 const sql = require('mssql/msnodesqlv8');
 const cors = require('cors');
+const session = require("express-session");
 
 const config = {
     connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.DB_SERVER};
@@ -17,6 +18,16 @@ const reg_bus = express.urlencoded({
     limit: 10000,
     parameterLimit: 6
 });
+app.use(
+    session({
+        secret: "H9b4fV6RZT7TgPEmdZ4IdRh5me7Tv01o",
+        saveUninitialized: false, 
+        resave: false,
+        cookie: {
+            maxAge: 60000 * 60 // Cookie Time 1 hr
+        }
+    })
+);
 
 app.get('/', function(req, res){
     sql.connect(config, function(err){
@@ -35,7 +46,7 @@ app.get('/', function(req, res){
     res.end("It worked!");
 });
 
-app.post("/register/business", reg_bus, (req, res) => {
+app.post("/owner/register", reg_bus, (req, res) => {
     const {name, email, username, password, business, address} = req.body;
     sql.connect(config, (err) => {
         if (err) {
@@ -73,7 +84,7 @@ const reg_man = express.urlencoded({
     parameterLimit: 5
 });
 
-app.post("/register/manager", reg_man, (req, res) =>
+app.post("/manager/register", reg_man, (req, res) =>
 {
     const {name, email, username, password, businessID} = req.body;
     sql.connect(config, (err) => {
@@ -111,8 +122,13 @@ const add_sto = express.urlencoded({
     parameterLimit: 3
 });
 
-app.post("/add_store", add_sto, (req, res) =>
+app.post("/owner/add_store", add_sto, (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
+    else if (!req.session.user.ownerID)
+        return res.status(401).json({ message: "Manager is not authorized"});
+
     const {name, businessID, address} = req.body;
     sql.connect(config, (err) => {
         if (err) {
@@ -147,8 +163,13 @@ const add_pro = express.urlencoded({
     parameterLimit: 4
 });
 
-app.post("/add_product", add_pro, (req, res) =>
+app.post("/owner/add_product", add_pro, (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
+    else if (!req.session.user.ownerID)
+        return res.status(401).json({ message: "Manager is not authorized"});
+
     const {name, businessID, category, price} = req.body;
     sql.connect(config, (err) => {
         if (err) {
@@ -186,6 +207,8 @@ const add_inventory = express.urlencoded({
 
 app.post("/add_inventory", add_inventory, (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
     const {productID, warehouseID} = req.body;
     sql.connect(config, (err) => {
         if (err) {
@@ -221,6 +244,8 @@ const add_stock = express.urlencoded({
 
 app.post("/add_stockreq", add_stock, (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
     const {storeID, productID, quantity, message} = req.body;
     sql.connect(config, (err) => {
         if (err) {
@@ -252,6 +277,8 @@ app.post("/add_stockreq", add_stock, (req, res) =>
 
 app.delete("/store/:id", (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
     const { id }= req.params;
     sql.connect(config, (err) => {
         if (err) {
@@ -283,7 +310,9 @@ app.delete("/store/:id", (req, res) =>
 });
 
 app.delete("/product/:id", (req, res) =>
-{
+{    
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
     const { id }= req.params;
     sql.connect(config, (err) => {
         if (err) {
@@ -315,7 +344,9 @@ app.delete("/product/:id", (req, res) =>
 });
 
 app.delete("/stock_req/:id", (req, res) =>
-{
+{ 
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
     const { id } = req.params;
     sql.connect(config, (err) => {
         if (err) {
@@ -348,6 +379,8 @@ app.delete("/stock_req/:id", (req, res) =>
 
 app.delete("/stock_req/:id", (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
     const { id } = req.params;
     sql.connect(config, (err) => {
         if (err) {
@@ -378,8 +411,12 @@ app.delete("/stock_req/:id", (req, res) =>
     })
 });
     
-app.delete("/sto_manager/:id", (req, res) =>
+app.delete("owner/sto_manager/:id", (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
+    else if (!req.session.user.ownerID)
+        return res.status(401).json({ message: "Manager is not authorized"});
     const { id } = req.params;
     sql.connect(config, (err) => {
         if (err) {
@@ -412,6 +449,10 @@ app.delete("/sto_manager/:id", (req, res) =>
 
 app.delete("/notification/:id", (req, res) =>
 {
+    if (!req.session.user)
+        return res.status(401).json({ message: "Login User First"});
+    else if (!req.session.user.ownerID)
+        return res.status(401).json({ message: "Manager is not authorized"});
     const { id } = req.params; // Change this to session id
     sql.connect(config, (err) => {
         if (err) {
@@ -433,9 +474,9 @@ app.delete("/notification/:id", (req, res) =>
                 {
                     console.log(record);
                     if (record.rowsAffected[0] === 0)
-                        res.status(404).json({ message: "Manager Not found"});
+                        res.status(404).json({ message: "Notification Not found"});
                     else
-                        res.json({ message: "Store Manager was deleted successfully"});
+                        res.json({ message: "Notification was deleted successfully"});
                 }
             });
         }
@@ -483,11 +524,13 @@ app.post("/owner/login", login_auth, (req, res) =>
                         {
                             if (err)
                             {
-                                console.log(err)
+                                console.log(err);
                                 res.json({ message: "Could not execute query" });
                             }
                             else
                             {
+                                req.session.user = record.recordset[0];
+                                console.log(req.session.user)
                                 res.json({ message: "Login successful", business: rec.recordset[0], 
                                     user: record.recordset[0]});
                             }
@@ -553,7 +596,8 @@ app.post("/manager/login", login_auth, (req, res) =>
                                             res.json({ message: "Could not execute query" });
                                         }
                                         else
-                                        {    
+                                        {   
+                                            req.session.user = record.recordset[0];
                                             res.json({ message: "Login successful", Store: rec.recordset[0], 
                                                 user: record.recordset[0], inventory: reco.recordset});
                                         }
@@ -561,6 +605,7 @@ app.post("/manager/login", login_auth, (req, res) =>
                                 }
                                 else
                                 {
+                                    req.session.user = record.recordset[0];
                                     res.json({ message: "Login successful", Store: rec.recordset[0], 
                                         user: record.recordset[0]});
                                 }
@@ -576,7 +621,7 @@ app.post("/manager/login", login_auth, (req, res) =>
 const get_req = express.urlencoded({ 
     extended : false,
     limit: 10000,
-    parameterLimit: 0
+    parameterLimit: 1
 });
 
 app.get("/owner/stores", get_req, (req, res) =>
