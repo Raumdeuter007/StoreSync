@@ -75,7 +75,8 @@ CREATE TABLE Products(
 	ProductName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
 	Category VARCHAR(255) NOT NULL,
-	PricePerUnit DECIMAL(10,2) NOT NULL
+	PricePerUnit DECIMAL(10,2) NOT NULL,
+	UNIQUE(ProductName, BusinessID)
 );
 
 ALTER TABLE Products ADD CONSTRAINT PK_Products PRIMARY KEY (ProductID);
@@ -890,13 +891,13 @@ VALUES
 
 
 -- Insert exactly 7 stores, each assigned to a unique valid manager (1 to 10)
-EXEC insert_Stores 'Store A', 1, 'Address A', 4;  -- ManagerID 1
-EXEC insert_Stores 'Store C', 1, 'Address C', 1;  -- ManagerID 3
-EXEC insert_Stores 'Store D', 3, 'Address D', 2;  -- ManagerID 4
-EXEC insert_Stores 'Store E', 2, 'Address E', 5;  -- ManagerID 5
-EXEC insert_Stores 'Store F', 2, 'Address F', 10;  -- ManagerID 6
-EXEC insert_Stores 'Store G', 5, 'Address G', 7;  -- ManagerID 7
-EXEC insert_Stores 'Store A', 5, 'Address I', 9;  -- ManagerID 7
+--EXEC insert_Stores 'Store A', 1, 'Address A', 4;  -- ManagerID 1
+--EXEC insert_Stores 'Store C', 1, 'Address C', 1;  -- ManagerID 3
+--EXEC insert_Stores 'Store D', 3, 'Address D', 2;  -- ManagerID 4
+--EXEC insert_Stores 'Store E', 2, 'Address E', 5;  -- ManagerID 5
+--EXEC insert_Stores 'Store F', 2, 'Address F', 10;  -- ManagerID 6
+--EXEC insert_Stores 'Store G', 5, 'Address G', 7;  -- ManagerID 7
+--EXEC insert_Stores 'Store A', 5, 'Address I', 9;  -- ManagerID 7
 
 
 
@@ -1573,7 +1574,7 @@ GO
 CREATE PROCEDURE Remove_Read_Notifications @ownerID INT
 AS
 BEGIN
-    DELETE FROM Notifications WHERE ReadStatus = 'Read' AND RecipientUserID = @ownerID;
+    DELETE FROM Notifications WHERE ReadStatus = 2 AND RecipientUserID = @ownerID;
 
 END;
 GO

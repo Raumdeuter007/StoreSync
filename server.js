@@ -187,8 +187,7 @@ app.post("/owner/register", reg_bus, async (req, res) => {
         .execute("insert_OwnersAndBusiness");
         res.json({message: "It was added successfully"});
     }
-    catch(err)
-    {
+    catch(err) {
         console.log(err);
         res.status(505).json({ message: "Database Error", err});
     }
@@ -214,8 +213,7 @@ app.post("/manager/register", reg_man, async (req, res) =>
         .execute("insert_Managers");
         res.json({message: "It was added successfully"});
     }
-    catch(err)
-    {
+    catch(err) {
         console.log(err);
         res.status(505).json({ message: "Database Error", err});
     }
@@ -227,34 +225,22 @@ const add_sto = express.urlencoded({
     parameterLimit: 3
 });
 
-app.post("/owner/add_store", add_sto, auth_owner, (req, res) =>
-{
-    const {name, businessID, address} = req.body;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("StoreName", name)
-            .input("BusinessID", businessID)
-            .input("StoreAddress", address)
-            .execute("insert_Stores", (err) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    res.json({message: "It was added successfully"});
-                }
-            });
-        }
-    })
+app.post("/owner/add_store", add_sto, auth_owner, async (req, res) => {
+    const {name, address} = req.body;
+    const businessID = req.user.user_id;
+    try {
+        const pool = await sql.connect(config);
+        await pool.request()
+        .input("StoreName", name)
+        .input("BusinessID", businessID)
+        .input("StoreAddress", address)
+        .execute("insert_Stores");
+        res.json({message: "It was added successfully"});
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
 const add_pro = express.urlencoded({ 
@@ -263,35 +249,24 @@ const add_pro = express.urlencoded({
     parameterLimit: 4
 });
 
-app.post("/owner/add_product", add_pro, auth_owner, (req, res) =>
+app.post("/owner/add_product", add_pro, auth_owner, async (req, res) =>
 {
-    const {name, businessID, category, price} = req.body;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("ProductName", name)
-            .input("BusinessID", businessID)
-            .input("Category", category)
-            .input("PricePerUnit", price)
-            .execute("insert_Products", (err) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    res.json({message: "It was added successfully"});
-                }
-            });
-        }
-    })
+    const {name, category, price} = req.body;
+    const businessID = req.user.user_id;
+    try {
+        const pool = await sql.connect(config);
+        await pool.request()
+        .input("ProductName", name)
+        .input("BusinessID", businessID)
+        .input("Category", category)
+        .input("PricePerUnit", price)
+        .execute("insert_Products");
+        res.json({message: "It was added successfully"});
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
 const add_inventory = express.urlencoded({ 
@@ -300,33 +275,22 @@ const add_inventory = express.urlencoded({
     parameterLimit: 2
 });
 
-app.post("/add_inventory", add_inventory, auth_both, (req, res) =>
+app.post("/add_inventory", add_inventory, auth_both, async (req, res) =>
 {
+    // Add Authentication that product and warehouse are of store owner / manager
     const {productID, warehouseID} = req.body;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("ProductID", productID)
-            .input("WarehouseID", warehouseID)
-            .execute("insert_ProductinWarehouse", (err) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    res.json({message: "It was added successfully"});
-                }
-            });
-        }
-    })
+    try {
+        const pool = await sql.connect(config);
+        await pool.request()
+        .input("ProductID", productID)
+        .input("WarehouseID", warehouseID)
+        .execute("insert_ProductinWarehouse");
+        res.json({message: "It was added successfully"});
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
 const add_stock = express.urlencoded({ 
@@ -335,245 +299,125 @@ const add_stock = express.urlencoded({
     parameterLimit: 4
 });
 
-app.post("/add_stockreq", add_stock, (req, res) =>
+app.post("/add_stockreq", add_stock, auth_both, async (req, res) =>
 {
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
+    // Same authentication as that of above
     const {storeID, productID, quantity, message} = req.body;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("ProductID", productID)
-            .input("RequestingStoreID", storeID)
-            .input("RequestedQuantity", quantity)
-            .input("message", message)
-            .execute("insert_StockRequests", (err) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    res.json({ message: "It was added successfully"});
-                }
-            });
-        }
-    })
+    try {
+        const pool = await sql.connect(config);
+        await pool.request()
+        .input("ProductID", productID)
+        .input("RequestingStoreID", storeID)
+        .input("RequestedQuantity", quantity)
+        .input("message", message)
+        .execute("insert_StockRequests");
+        res.json({message: "It was added successfully"});
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
-app.delete("/store/:id", (req, res) =>
+app.delete("/owner/store/:id", auth_owner, async(req, res) =>
 {
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
-    const { id }= req.params;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
+    // Verify that stores belong to owner
+    const {id} = req.params;
+    try {
+        const pool = await sql.connect(config);
+        const record = await pool.request()
+        .input("StoreID", id)
+        .execute("delete_store");
+        if (record.rowsAffected[0] === 0)
+            res.status(404).json({ message: "Store Not found"});
         else
-        {
-            let request = new sql.Request();
-            request
-            .input("StoreID", id)
-            .execute("delete_store", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    console.log(record);
-                    if (record.rowsAffected[0] === 0)
-                        res.status(404).json({ message: "Store Not found"});
-                    else
-                        res.json({ message: "It was deleted successfully"});
-                }
-            });
-        }
-    })
+            res.json({ message: "It was deleted successfully"});
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
-app.delete("/product/:id", (req, res) =>
+app.delete("/owner/product/:id", auth_owner, async (req, res) =>
 {    
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
-    const { id }= req.params;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
+    // Same check as above
+    const { id } = req.params;
+    try {
+        const pool = await sql.connect(config);
+        const record = await pool.request()
+        .input("ProductID", id)
+        .execute("delete_product");
+        if (record.rowsAffected[0] === 0)
+            res.status(404).json({ message: "Product Not found"});
         else
-        {
-            let request = new sql.Request();
-            request
-            .input("ProductID", id)
-            .execute("delete_product", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    console.log(record);
-                    if (record.rowsAffected[0] === 0)
-                        res.status(404).json({ message: "Product Not found"});
-                    else
-                        res.json({ message: "It was deleted successfully"});
-                }
-            });
-        }
-    })
+            res.json({ message: "It was deleted successfully"});
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
-app.delete("/stock_req/:id", (req, res) =>
+app.delete("/stock_req/:id", auth_both, async (req, res) =>
 { 
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
+    // Check if ID related to manager / owner
     const { id } = req.params;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
+    try {
+        const pool = await sql.connect(config);
+        const record = await pool.request()
+        .input("RequestID", id)
+        .execute("Cancel_StockRequest");
+        if (record.rowsAffected[0] === 0)
+            res.status(404).json({ message: "Stock Request Not found"});
         else
-        {
-            let request = new sql.Request();
-            request
-            .input("RequestID", id)
-            .execute("Cancel_StockRequest", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    console.log(record);
-                    if (record.rowsAffected[0] === 0)
-                        res.status(404).json({ message: "Stock Request Not found"});
-                    else
-                        res.json({ message: "Request was deleted successfully"});
-                }
-            });
-        }
-    })
+            res.json({ message: "It was deleted successfully"});
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
-app.delete("/stock_req/:id", (req, res) =>
-{
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
-    const { id } = req.params;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("RequestID", id)
-            .execute("Cancel_StockRequest", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    console.log(record);
-                    if (record.rowsAffected[0] === 0)
-                        res.status(404).json({ message: "Stock Request Not found"});
-                    else
-                        res.json({ message: "Request was deleted successfully"});
-                }
-            });
-        }
-    })
-});
     
-app.delete("owner/sto_manager/:id", (req, res) =>
+app.delete("/owner/sto_manager/:id", auth_owner, async (req, res) =>
 {
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
-    else if (!req.session.user.ownerID)
-        return res.status(401).json({ message: "Manager is not authorized"});
     const { id } = req.params;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
+    // Check if ID related to owner
+    try {
+        const pool = await sql.connect(config);
+        const record = await pool.request()
+        .input("ManagerID", id)
+        .execute("delete_manager_withNoAssignedStore");
+        if (record.rowsAffected[0] === 0)
+            res.status(404).json({ message: "Manager Not found"});
         else
-        {
-            let request = new sql.Request();
-            request
-            .input("ManagerID", id)
-            .execute("delete_manager_withNoAssignedStore", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    console.log(record);
-                    if (record.rowsAffected[0] === 0)
-                        res.status(404).json({ message: "Manager Not found"});
-                    else
-                        res.json({ message: "Store Manager was deleted successfully"});
-                }
-            });
-        }
-    })
+            res.json({ message: "Store Manager was deleted successfully"}); 
+    }
+    catch(err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
-app.delete("/notification/:id", (req, res) =>
+app.delete("/owner/notification", auth_owner, async (req, res) =>
 {
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
-    else if (!req.session.user.ownerID)
-        return res.status(401).json({ message: "Manager is not authorized"});
-    const { id } = req.params; // Change this to session id
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("ownerID", id)
-            .execute("Remove_Read_Notifications", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    console.log(record);
-                    if (record.rowsAffected[0] === 0)
-                        res.status(404).json({ message: "Notification Not found"});
-                    else
-                        res.json({ message: "Notification was deleted successfully"});
-                }
-            });
-        }
-    })
+    const { id } = req.user.user_id; 
+    try {
+        const pool = await sql.connect(config);
+        const record = await pool.request()
+        .input("ownerID", id)
+        .execute("Remove_Read_Notifications");
+
+        if (record.rowsAffected[0] === 0)
+            res.status(404).json({ message: "No read Notifiactions Found"});
+        else                        
+            res.json({ message: "Notification was deleted successfully"});
+    }
+    catch (err) {
+        console.log(err);
+        res.status(505).json({ message: "Could not execute", err});
+    }
 });
 
 const login_auth = express.urlencoded({ 
