@@ -3,11 +3,164 @@ require('dotenv').config();
 const sql = require('mssql/msnodesqlv8');
 const cors = require('cors');
 const session = require("express-session");
+const passport = require('passport');
+const { Strategy } = require('passport-local');
 
 const config = {
     connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.DB_SERVER};
     Database=${process.env.DB_DATABASE};Trusted_Connection=Yes;`,
 };
+
+passport.use('owner',
+    new Strategy((username, password, done) => {
+        sql.connect(config, (err) =>
+        {
+            if (err)
+            {
+                console.log(err);
+                return done(err, false);
+            }
+            else
+            {
+                let request = new sql.Request();
+                request
+                .input("username", username)
+                .input("password", password)
+                .execute("VerifyOwnerLogin", (err, record) => {
+                    if (err)
+                    {
+                        console.log(err);
+                        done(err, false);
+                    }
+                    else
+                    {
+                        if (record.recordsets.length === 0)
+                            done(null, false, {message: "No such user"});
+                        else
+                        {
+                            const dict = {
+                                user_id: record.recordset[0].ownerID, 
+                                role: 'owner',        
+                            };
+                            console.log(dict);
+                            done(null, dict);
+                        }
+                    }
+                })
+            }
+        })
+}));
+
+passport.use('manager',
+    new Strategy((username, password, done) => {
+        sql.connect(config, (err) =>
+        {
+            if (err)
+            {
+                console.log(err);
+                return done(err, false);
+            }
+            else
+            {
+                let request = new sql.Request();
+                request
+                .input("username", username)
+                .input("password", password)
+                .execute("VerifyManagerLogin", (err, record) => {
+                    if (err)
+                    {
+                        console.log(err);
+                        done(err, false);
+                    }
+                    else
+                    {
+                        if (record.recordsets.length === 0)
+                            done(null, false, {message: "No such user"});
+                        else
+                        {
+                            const dict = {
+                                user_id: record.recordset[0].ownerID, 
+                                role: 'manager'        
+                            };
+                            done(null, dict);
+                        }
+                    }
+                })
+            }
+        })
+}));
+
+passport.serializeUser((user, done) => {
+    console.log(user);
+    done(null, user);
+});
+
+passport.deserializeUser((login, done) => {
+    console.log("Inside Deserializer");
+    sql.connect(config, (err) =>
+    {
+        console.log(login);
+        if (err)
+        {
+            console.log(err);
+            return done(err, false);
+        }
+        else
+        {
+            let request = new sql.Request();
+            if (login.role === 'owner') {
+                request
+                .input("id", username)
+                .query("SELECT * FROM Owners WHERE ownerid = @id", (err, record) => {
+                    if (err)
+                    {
+                        console.log(err);
+                        done(err, false);
+                    }
+                    else
+                    {
+                        if (record.recordsets.length === 0)
+                            done(null, false, {message: "No such user"});
+                        else
+                        {
+                            const dict = {
+                                user_id: record.recordset[0].ownerID, 
+                                role: 'owner'        
+                            };
+                            done(null, dict);
+                        }
+                    }
+                })
+            }
+            else if (login.role === 'manager')
+            {
+                request
+                .input("username", username)
+                .input("password", password)
+                .execute("VerifyManagerLogin", (err, record) => {
+                    if (err)
+                    {
+                        console.log(err);
+                        done(err, false);
+                    }
+                    else
+                    {
+                        if (record.recordsets.length === 0)
+                            done(null, false, {message: "No such user"});
+                        else
+                        {
+                            const dict = {
+                                user_id: record.recordset[0].ownerID, 
+                                role: 'manager'        
+                            };
+                            done(null, dict);
+                        }
+                    }
+                })
+            }
+        }
+    })
+});
 
 const app = express();
 const PORT = 5000;
@@ -124,9 +277,10 @@ const add_sto = express.urlencoded({
 
 app.post("/owner/add_store", add_sto, (req, res) =>
 {
-    if (!req.session.user)
+    console.log(req.session);
+    if (!req.session.passport.user)
         return res.status(401).json({ message: "Login User First"});
-    else if (!req.session.user.ownerID)
+    else if (req.session.passport.user.role !== 'owner')
         return res.status(401).json({ message: "Manager is not authorized"});
 
     const {name, businessID, address} = req.body;
@@ -489,133 +643,135 @@ const login_auth = express.urlencoded({
     parameterLimit: 2
 });
 
-app.post("/owner/login", login_auth, (req, res) =>
+app.post("/owner/login", login_auth, passport.authenticate("owner"), (req, res) =>
 {
-    const { username, password } = req.body;
-    sql.connect(config, (err) =>
-    {
-        if (err)
-        {
-            console.log(err);
-            res.json({ message: "Could not connect to Database", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("username", username)
-            .input("password", password)
-            .execute("VerifyOwnerLogin", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    if (record.recordsets.length === 0)
-                        res.status(404).json({ message: "Incorrect Credentials"});
-                    else
-                    {
-                        let business = new sql.Request();
-                        business
-                        .input("OwnerID", record.recordset[0].ownerID)
-                        .execute("Business_detailOfOwner", (err, rec) =>
-                        {
-                            if (err)
-                            {
-                                console.log(err);
-                                res.json({ message: "Could not execute query" });
-                            }
-                            else
-                            {
-                                req.session.user = record.recordset[0];
-                                console.log(req.session.user)
-                                res.json({ message: "Login successful", business: rec.recordset[0], 
-                                    user: record.recordset[0]});
-                            }
-                        });
-                    }
-                }
-            });
-        }
-    })
+    res.status(200).json({message: "You are connected"});
+    // const { username, password } = req.body;
+    // sql.connect(config, (err) =>
+    // {
+    //     if (err)
+    //     {
+    //         console.log(err);
+    //         res.json({ message: "Could not connect to Database", err});
+    //     }
+    //     else
+    //     {
+    //         let request = new sql.Request();
+    //         request
+    //         .input("username", username)
+    //         .input("password", password)
+    //         .execute("VerifyOwnerLogin", (err, record) => {
+    //             if (err)
+    //             {
+    //                 console.log(err);
+    //                 res.status(505).json({ message: "Could not execute query", err});
+    //             }
+    //             else
+    //             {
+    //                 if (record.recordsets.length === 0)
+    //                     res.status(404).json({ message: "Incorrect Credentials"});
+    //                 else
+    //                 {
+    //                     let business = new sql.Request();
+    //                     business
+    //                     .input("OwnerID", record.recordset[0].ownerID)
+    //                     .execute("Business_detailOfOwner", (err, rec) =>
+    //                     {
+    //                         if (err)
+    //                         {
+    //                             console.log(err);
+    //                             res.json({ message: "Could not execute query" });
+    //                         }
+    //                         else
+    //                         {
+    //                             req.session.user = record.recordset[0];
+    //                             console.log(req.session.user)
+    //                             res.json({ message: "Login successful", business: rec.recordset[0], 
+    //                                 user: record.recordset[0]});
+    //                         }
+    //                     });
+    //                 }
+    //             }
+    //         });
+    //     }
+    // })
 });
 
-app.post("/manager/login", login_auth, (req, res) =>
+app.post("/manager/login", login_auth, passport.authenticate("manager"), (req, res) =>
 {
-    const { username, password } = req.body;
-    sql.connect(config, (err) =>
-    {
-        if (err)
-        {
-            console.log(err);
-            res.json({ message: "Could not connect to Database", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("username", username)
-            .input("password", password)
-            .execute("VerifyManagerLogin", (err, record) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    if (record.recordsets.length === 0)
-                        res.status(404).json({ message: "Incorrect Credentials"});
-                    else
-                    {
-                        let store = new sql.Request();
-                        store
-                        .input("ManagerID", record.recordset[0].managerID)
-                        .execute("StoreDetailsOfManagers", (err, rec) =>
-                        {
-                            if (err)
-                            {
-                                console.log(err)
-                                res.json({ message: "Could not execute query" });
-                            }
-                            else
-                            {
-                                console.log(rec);
-                                if (rec.recordset.length !== 0)
-                                {
-                                    let store = new sql.Request();
-                                    store
-                                    .input("StoreID", rec.recordset[0].StoreID)
-                                    .execute("InventoryStockDetails", (err, reco) =>
-                                    {
-                                        if (err)
-                                        {
-                                            console.log(err)
-                                            res.json({ message: "Could not execute query" });
-                                        }
-                                        else
-                                        {   
-                                            req.session.user = record.recordset[0];
-                                            res.json({ message: "Login successful", Store: rec.recordset[0], 
-                                                user: record.recordset[0], inventory: reco.recordset});
-                                        }
-                                    });
-                                }
-                                else
-                                {
-                                    req.session.user = record.recordset[0];
-                                    res.json({ message: "Login successful", Store: rec.recordset[0], 
-                                        user: record.recordset[0]});
-                                }
-                            }
-                        });
-                    }
-                }
-            });
-        }
-    })
+    res.status(200).json({message: "You are connected"});
+    // const { username, password } = req.body;
+    // sql.connect(config, (err) =>
+    // {
+    //     if (err)
+    //     {
+    //         console.log(err);
+    //         res.json({ message: "Could not connect to Database", err});
+    //     }
+    //     else
+    //     {
+    //         let request = new sql.Request();
+    //         request
+    //         .input("username", username)
+    //         .input("password", password)
+    //         .execute("VerifyManagerLogin", (err, record) => {
+    //             if (err)
+    //             {
+    //                 console.log(err);
+    //                 res.status(505).json({ message: "Could not execute query", err});
+    //             }
+    //             else
+    //             {
+    //                 if (record.recordsets.length === 0)
+    //                     res.status(404).json({ message: "Incorrect Credentials"});
+    //                 else
+    //                 {
+    //                     let store = new sql.Request();
+    //                     store
+    //                     .input("ManagerID", record.recordset[0].managerID)
+    //                     .execute("StoreDetailsOfManagers", (err, rec) =>
+    //                     {
+    //                         if (err)
+    //                         {
+    //                             console.log(err)
+    //                             res.json({ message: "Could not execute query" });
+    //                         }
+    //                         else
+    //                         {
+    //                             console.log(rec);
+    //                             if (rec.recordset.length !== 0)
+    //                             {
+    //                                 let store = new sql.Request();
+    //                                 store
+    //                                 .input("StoreID", rec.recordset[0].StoreID)
+    //                                 .execute("InventoryStockDetails", (err, reco) =>
+    //                                 {
+    //                                     if (err)
+    //                                     {
+    //                                         console.log(err)
+    //                                         res.json({ message: "Could not execute query" });
+    //                                     }
+    //                                     else
+    //                                     {   
+    //                                         req.session.user = record.recordset[0];
+    //                                         res.json({ message: "Login successful", Store: rec.recordset[0], 
+    //                                             user: record.recordset[0], inventory: reco.recordset});
+    //                                     }
+    //                                 });
+    //                             }
+    //                             else
+    //                             {
+    //                                 req.session.user = record.recordset[0];
+    //                                 res.json({ message: "Login successful", Store: rec.recordset[0], 
+    //                                     user: record.recordset[0]});
+    //                             }
+    //                         }
+    //                     });
+    //                 }
+    //             }
+    //         });
+    //     }
+    // })
 });
 
 const get_req = express.urlencoded({ 
