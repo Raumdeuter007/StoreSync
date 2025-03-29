@@ -12,155 +12,125 @@ const config = {
 };
 
 passport.use('owner',
-    new Strategy((username, password, done) => {
-        sql.connect(config, (err) =>
+    new Strategy(async (username, password, done) => {
+        try 
         {
-            if (err)
-            {
-                console.log(err);
-                return done(err, false);
-            }
-            else
-            {
-                let request = new sql.Request();
-                request
+            const pool = await sql.connect(config);
+            let result = await pool.request()
                 .input("username", username)
                 .input("password", password)
-                .execute("VerifyOwnerLogin", (err, record) => {
-                    if (err)
-                    {
-                        console.log(err);
-                        done(err, false);
-                    }
-                    else
-                    {
-                        if (record.recordsets.length === 0)
-                            done(null, false, {message: "No such user"});
-                        else
-                        {
-                            const dict = {
-                                user_id: record.recordset[0].ownerID, 
-                                role: 'owner',        
-                            };
-                            console.log(dict);
-                            done(null, dict);
-                        }
-                    }
-                })
-            }
-        })
+                .execute("VerifyOwnerLogin");
+            
+            console.log(result);
+            if (result.recordsets.length === 0)
+                done(null, false);  
+            else {
+                const dict = {
+                    user_id: result.recordset[0].ownerID, 
+                    role: 'owner',        
+                };
+                done(null, dict);
+            }         
+        }
+        catch (err)
+        {
+            console.log(err);
+            done(err, false);
+        }        
 }));
 
 passport.use('manager',
-    new Strategy((username, password, done) => {
-        sql.connect(config, (err) =>
+    new Strategy(async (username, password, done) => {
+        try 
         {
-            if (err)
-            {
-                console.log(err);
-                return done(err, false);
-            }
-            else
-            {
-                let request = new sql.Request();
-                request
-                .input("username", username)
-                .input("password", password)
-                .execute("VerifyManagerLogin", (err, record) => {
-                    if (err)
-                    {
-                        console.log(err);
-                        done(err, false);
-                    }
-                    else
-                    {
-                        if (record.recordsets.length === 0)
-                            done(null, false, {message: "No such user"});
-                        else
-                        {
-                            const dict = {
-                                user_id: record.recordset[0].ownerID, 
-                                role: 'manager'        
-                            };
-                            done(null, dict);
-                        }
-                    }
-                })
-            }
-        })
+            const pool = await sql.connect(config);
+            let result = await pool.request()
+            .input("username", username)
+            .input("password", password)
+            .execute("VerifyManagerLogin");
+
+            console.log(result);
+            if (result.recordsets.length === 0)
+                done(null, false);  
+            else {
+                const dict = {
+                    user_id: result.recordset[0].managerID, 
+                    role: 'manager',        
+                };
+                done(null, dict);
+            }         
+        }
+        catch (err)
+        {
+            console.log(err);
+            done(err, false);
+        }        
 }));
 
 passport.serializeUser((user, done) => {
-    console.log(user);
     done(null, user);
 });
 
-passport.deserializeUser((login, done) => {
-    console.log("Inside Deserializer");
-    sql.connect(config, (err) =>
-    {
-        console.log(login);
-        if (err)
+passport.deserializeUser(async (login, done) => {
+    try {
+        const pool = await sql.connect(config);
+        if (login.role === 'owner')
         {
-            console.log(err);
-            return done(err, false);
-        }
-        else
-        {
-            let request = new sql.Request();
-            if (login.role === 'owner') {
-                request
-                .input("id", username)
-                .query("SELECT * FROM Owners WHERE ownerid = @id", (err, record) => {
-                    if (err)
-                    {
-                        console.log(err);
-                        done(err, false);
-                    }
-                    else
-                    {
-                        if (record.recordsets.length === 0)
-                            done(null, false, {message: "No such user"});
-                        else
-                        {
-                            const dict = {
-                                user_id: record.recordset[0].ownerID, 
-                                role: 'owner'        
-                            };
-                            done(null, dict);
-                        }
-                    }
-                })
-            }
-            else if (login.role === 'manager')
+            let result = await pool.request()
+            .input("id", login.user_id)
+            .query("SELECT * FROM Owners WHERE ownerid = @id");
+            if (result.recordsets.length === 0)
+                done(null, false, {message: "No such user"});
+            else
             {
-                request
-                .input("username", username)
-                .input("password", password)
-                .execute("VerifyManagerLogin", (err, record) => {
-                    if (err)
-                    {
-                        console.log(err);
-                        done(err, false);
-                    }
-                    else
-                    {
-                        if (record.recordsets.length === 0)
-                            done(null, false, {message: "No such user"});
-                        else
-                        {
-                            const dict = {
-                                user_id: record.recordset[0].ownerID, 
-                                role: 'manager'        
-                            };
-                            done(null, dict);
-                        }
-                    }
-                })
+                const dict = {
+                    user_id: result.recordset[0].ownerID, 
+                    role: 'owner'        
+                };
+                done(null, dict);
             }
         }
-    })
+        else if (login.role === 'manager')
+        {
+            let result = await pool.request()
+            .input("id", login.user_id)
+            .query("SELECT * FROM Managers WHERE managerid = @id")
+            if (result.recordsets.length === 0)
+                done(null, false, {message: "No such user"});
+            else
+            {
+                const dict = {
+                    user_id: result.recordset[0].ownerID, 
+                    role: 'manager'        
+                };
+                done(null, dict);
+            }
+        }
+    }
+    catch (err)
+    {
+        console.log(err);
+        return done(err, false);
+    }
 });
+
+const auth_both = (req, res, next) =>
+{
+    if (req.isAuthenticated()) return next();
+    return res.status(401).json({message: "You are not authorized"});
+};
+
+const auth_owner = (req, res, next) =>
+{
+    if (req.isAuthenticated() && req.user.role === 'owner') return next();
+    return res.status(401).json({message: "You are not authorized"});
+};
+
+const auth_man = (req, res, next) =>
+{
+    if (req.isAuthenticated() && req.user.role === 'manager') return next();
+    return res.status(401).json({message: "You are not authorized"});
+};
 
 const app = express();
 const PORT = 5000;
@@ -171,6 +141,7 @@ const reg_bus = express.urlencoded({
     limit: 10000,
     parameterLimit: 6
 });
+
 app.use(
     session({
         secret: "H9b4fV6RZT7TgPEmdZ4IdRh5me7Tv01o",
@@ -181,6 +152,9 @@ app.use(
         }
     })
 );
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.get('/', function(req, res){
     sql.connect(config, function(err){
@@ -199,36 +173,25 @@ app.get('/', function(req, res){
     res.end("It worked!");
 });
 
-app.post("/owner/register", reg_bus, (req, res) => {
+app.post("/owner/register", reg_bus, async (req, res) => {
     const {name, email, username, password, business, address} = req.body;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("O_name", name)
-            .input("O_email", email)
-            .input("O_username", username)
-            .input("O_password", password)
-            .input("BusinessName", business)
-            .input("HQAddress", address)
-            .execute("insert_OwnersAndBusiness", (err) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    res.json({message: "It was added successfully"});
-                }
-            });
-        }
-    })
+    try {
+        const pool = await sql.connect(config);
+        await pool.request()
+        .input("O_name", name)
+        .input("O_email", email)
+        .input("O_username", username)
+        .input("O_password", password)
+        .input("BusinessName", business)
+        .input("HQAddress", address)
+        .execute("insert_OwnersAndBusiness");
+        res.json({message: "It was added successfully"});
+    }
+    catch(err)
+    {
+        console.log(err);
+        res.status(505).json({ message: "Database Error", err});
+    }
 });
 
 const reg_man = express.urlencoded({ 
@@ -237,36 +200,25 @@ const reg_man = express.urlencoded({
     parameterLimit: 5
 });
 
-app.post("/manager/register", reg_man, (req, res) =>
+app.post("/manager/register", reg_man, async (req, res) =>
 {
     const {name, email, username, password, businessID} = req.body;
-    sql.connect(config, (err) => {
-        if (err) {
-            console.log(err);
-            res.status(505).json({ message: "Could not connect", err});
-        }
-        else
-        {
-            let request = new sql.Request();
-            request
-            .input("name", name)
-            .input("email", email)
-            .input("username", username)
-            .input("password", password)
-            .input("BusinessID", businessID)
-            .execute("insert_Managers", (err) => {
-                if (err)
-                {
-                    console.log(err);
-                    res.status(505).json({ message: "Could not execute query", err});
-                }
-                else
-                {
-                    res.json({message: "It was added successfully"});
-                }
-            });
-        }
-    })
+    try {
+        const pool = await sql.connect(config);
+        await pool.request()
+        .input("name", name)
+        .input("email", email)
+        .input("username", username)
+        .input("password", password)
+        .input("BusinessID", businessID)
+        .execute("insert_Managers");
+        res.json({message: "It was added successfully"});
+    }
+    catch(err)
+    {
+        console.log(err);
+        res.status(505).json({ message: "Database Error", err});
+    }
 });
 
 const add_sto = express.urlencoded({ 
@@ -275,14 +227,8 @@ const add_sto = express.urlencoded({
     parameterLimit: 3
 });
 
-app.post("/owner/add_store", add_sto, (req, res) =>
+app.post("/owner/add_store", add_sto, auth_owner, (req, res) =>
 {
-    console.log(req.session);
-    if (!req.session.passport.user)
-        return res.status(401).json({ message: "Login User First"});
-    else if (req.session.passport.user.role !== 'owner')
-        return res.status(401).json({ message: "Manager is not authorized"});
-
     const {name, businessID, address} = req.body;
     sql.connect(config, (err) => {
         if (err) {
@@ -317,13 +263,8 @@ const add_pro = express.urlencoded({
     parameterLimit: 4
 });
 
-app.post("/owner/add_product", add_pro, (req, res) =>
+app.post("/owner/add_product", add_pro, auth_owner, (req, res) =>
 {
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
-    else if (!req.session.user.ownerID)
-        return res.status(401).json({ message: "Manager is not authorized"});
-
     const {name, businessID, category, price} = req.body;
     sql.connect(config, (err) => {
         if (err) {
@@ -359,10 +300,8 @@ const add_inventory = express.urlencoded({
     parameterLimit: 2
 });
 
-app.post("/add_inventory", add_inventory, (req, res) =>
+app.post("/add_inventory", add_inventory, auth_both, (req, res) =>
 {
-    if (!req.session.user)
-        return res.status(401).json({ message: "Login User First"});
     const {productID, warehouseID} = req.body;
     sql.connect(config, (err) => {
         if (err) {
