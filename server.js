@@ -429,132 +429,11 @@ const login_auth = express.urlencoded({
 app.post("/owner/login", login_auth, passport.authenticate("owner"), (req, res) =>
 {
     res.status(200).json({message: "You are connected"});
-    // const { username, password } = req.body;
-    // sql.connect(config, (err) =>
-    // {
-    //     if (err)
-    //     {
-    //         console.log(err);
-    //         res.json({ message: "Could not connect to Database", err});
-    //     }
-    //     else
-    //     {
-    //         let request = new sql.Request();
-    //         request
-    //         .input("username", username)
-    //         .input("password", password)
-    //         .execute("VerifyOwnerLogin", (err, record) => {
-    //             if (err)
-    //             {
-    //                 console.log(err);
-    //                 res.status(505).json({ message: "Could not execute query", err});
-    //             }
-    //             else
-    //             {
-    //                 if (record.recordsets.length === 0)
-    //                     res.status(404).json({ message: "Incorrect Credentials"});
-    //                 else
-    //                 {
-    //                     let business = new sql.Request();
-    //                     business
-    //                     .input("OwnerID", record.recordset[0].ownerID)
-    //                     .execute("Business_detailOfOwner", (err, rec) =>
-    //                     {
-    //                         if (err)
-    //                         {
-    //                             console.log(err);
-    //                             res.json({ message: "Could not execute query" });
-    //                         }
-    //                         else
-    //                         {
-    //                             req.session.user = record.recordset[0];
-    //                             console.log(req.session.user)
-    //                             res.json({ message: "Login successful", business: rec.recordset[0], 
-    //                                 user: record.recordset[0]});
-    //                         }
-    //                     });
-    //                 }
-    //             }
-    //         });
-    //     }
-    // })
 });
 
 app.post("/manager/login", login_auth, passport.authenticate("manager"), (req, res) =>
 {
     res.status(200).json({message: "You are connected"});
-    // const { username, password } = req.body;
-    // sql.connect(config, (err) =>
-    // {
-    //     if (err)
-    //     {
-    //         console.log(err);
-    //         res.json({ message: "Could not connect to Database", err});
-    //     }
-    //     else
-    //     {
-    //         let request = new sql.Request();
-    //         request
-    //         .input("username", username)
-    //         .input("password", password)
-    //         .execute("VerifyManagerLogin", (err, record) => {
-    //             if (err)
-    //             {
-    //                 console.log(err);
-    //                 res.status(505).json({ message: "Could not execute query", err});
-    //             }
-    //             else
-    //             {
-    //                 if (record.recordsets.length === 0)
-    //                     res.status(404).json({ message: "Incorrect Credentials"});
-    //                 else
-    //                 {
-    //                     let store = new sql.Request();
-    //                     store
-    //                     .input("ManagerID", record.recordset[0].managerID)
-    //                     .execute("StoreDetailsOfManagers", (err, rec) =>
-    //                     {
-    //                         if (err)
-    //                         {
-    //                             console.log(err)
-    //                             res.json({ message: "Could not execute query" });
-    //                         }
-    //                         else
-    //                         {
-    //                             console.log(rec);
-    //                             if (rec.recordset.length !== 0)
-    //                             {
-    //                                 let store = new sql.Request();
-    //                                 store
-    //                                 .input("StoreID", rec.recordset[0].StoreID)
-    //                                 .execute("InventoryStockDetails", (err, reco) =>
-    //                                 {
-    //                                     if (err)
-    //                                     {
-    //                                         console.log(err)
-    //                                         res.json({ message: "Could not execute query" });
-    //                                     }
-    //                                     else
-    //                                     {   
-    //                                         req.session.user = record.recordset[0];
-    //                                         res.json({ message: "Login successful", Store: rec.recordset[0], 
-    //                                             user: record.recordset[0], inventory: reco.recordset});
-    //                                     }
-    //                                 });
-    //                             }
-    //                             else
-    //                             {
-    //                                 req.session.user = record.recordset[0];
-    //                                 res.json({ message: "Login successful", Store: rec.recordset[0], 
-    //                                     user: record.recordset[0]});
-    //                             }
-    //                         }
-    //                     });
-    //                 }
-    //             }
-    //         });
-    //     }
-    // })
 });
 
 const get_req = express.urlencoded({ 
@@ -563,11 +442,19 @@ const get_req = express.urlencoded({
     parameterLimit: 1
 });
 
+app.post("/logout", auth_both, (req, res) => {
+    console.log(req.session);
+    req.logout(err => {
+        if (err) 
+            return res.sendStatus(400);
+		res.sendStatus(200);
+    })
+})
+
 app.get("/owner/stores", get_req, (req, res) =>
 {
 
 });
-
 
 
 app.listen(PORT, () => {
