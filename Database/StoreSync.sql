@@ -581,153 +581,154 @@ GO
 
 ---- 4. Update Store Details
 --GO
---CREATE PROCEDURE UpdateStores
---	@ColumnName VARCHAR(128),
---	@NewVal VARCHAR(255),
---	@StoreId INT
---AS
---BEGIN
---	SET NOCOUNT ON;
---	DECLARE @SQL NVARCHAR(MAX)
---	DECLARE @RetCode INT = 0
---	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+CREATE PROCEDURE UpdateStores
+	@ColumnName VARCHAR(128),
+	@NewVal VARCHAR(255),
+	@StoreId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
---	BEGIN TRY
---		SET @SQL = 'UPDATE Stores SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE StoreId  = @StoreId ';
---		EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @StoreId INT', @NewVal, @StoreId;
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END TRY
+	BEGIN TRY
+		SET @SQL = 'UPDATE Stores SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE StoreId  = @StoreId ';
+		EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @StoreId INT', @NewVal, @StoreId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
 
---	BEGIN CATCH
---		SET @RetCode = -1;
---		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END CATCH
---END
---GO
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
 
-----5. Update Product Details
---GO
---CREATE PROCEDURE UpdateProducts
---	@ColumnName VARCHAR(128),
---	@NewVal VARCHAR(255),
---	@ProductId INT
---AS
---BEGIN
---	SET NOCOUNT ON;
---	DECLARE @SQL NVARCHAR(MAX)
---	DECLARE @RetCode INT = 0
---	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+--5. Update Product Details
+GO
+CREATE PROCEDURE UpdateProducts
+	@ColumnName VARCHAR(128),
+	@NewVal VARCHAR(255),
+	@ProductId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
---	BEGIN TRY
---		SET @SQL = 'UPDATE Products SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE ProductId  = @ProductId ';
---		EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @ProductId INT', @NewVal, @ProductId;
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END TRY
+	BEGIN TRY
+		SET @SQL = 'UPDATE Products SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE ProductId  = @ProductId ';
+		EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @ProductId INT', @NewVal, @ProductId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
 
---	BEGIN CATCH
---		SET @RetCode = -1;
---		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END CATCH
---END
---GO
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
 
-----6. Update Inventory Details
---GO
---CREATE PROCEDURE UpdateInventory
---	@ColumnName VARCHAR(128),
---	@NewVal INT,
---	@WarehouseId INT,
---	@ProductId INT
---AS
---BEGIN
---	SET NOCOUNT ON;
---	DECLARE @SQL NVARCHAR(MAX)
---	DECLARE @RetCode INT = 0
---	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+--6. Update Inventory Details
+GO
+CREATE PROCEDURE UpdateInventory
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@WarehouseId INT,
+	@ProductId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
---	BEGIN TRY
---		SET @SQL = 'UPDATE Inventory SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE warehouseID  = @WarehouseId AND ProductID = @ProductId';
---		EXEC sp_executesql @SQL, N'@NewVal INT, @WarehouseId INT, @ProductId INT', @NewVal, @WarehouseId, @ProductId;
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END TRY
+	BEGIN TRY
+		SET @SQL = 'UPDATE Inventory SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE warehouseID  = @WarehouseId AND ProductID = @ProductId';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @WarehouseId INT, @ProductId INT', @NewVal, @WarehouseId, @ProductId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
 
---	BEGIN CATCH
---		SET @RetCode = -1;
---		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END CATCH
---END
---GO
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
 
-----7. Update Stock Requests
---GO
---CREATE PROCEDURE UpdateStockRequests
---	@ColumnName VARCHAR(128),
---	@NewVal INT,
---	@RequestingStoreId INT,
---	@ProductId INT,
---	@RequestDate DATETIME
---AS
---BEGIN
---	SET NOCOUNT ON;
---	DECLARE @SQL NVARCHAR(MAX)
---	DECLARE @RetCode INT = 0
---	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+--7. Update Stock Requests
+GO
+CREATE PROCEDURE UpdateStockRequests
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@RequestingStoreId INT,
+	@ProductId INT,
+	@RequestDate DATETIME
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
---	BEGIN TRY
---		SET @SQL = 'UPDATE StockRequests SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE RequestingStoreId  = @RequestingStoreId AND ProductID = @ProductId AND request_date = @RequestDate';
---		EXEC sp_executesql @SQL, N'@NewVal INT, @RequestingStoreId INT, @ProductId INT, @RequestDate DATETIME', @NewVal, @RequestingStoreId, @ProductId, @RequestDate;
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END TRY
+	BEGIN TRY
+		SET @SQL = 'UPDATE StockRequests SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE RequestingStoreId  = @RequestingStoreId AND ProductID = @ProductId AND request_date = @RequestDate';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @RequestingStoreId INT, @ProductId INT, @RequestDate DATETIME', @NewVal, @RequestingStoreId, @ProductId, @RequestDate;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
 
---	BEGIN CATCH
---		SET @RetCode = -1;
---		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END CATCH
---END
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
+GO
+-- 8. Change store manager
+CREATE PROCEDURE update_manager @ManagerID INT, @StoreID INT
+AS
+BEGIN 
+	IF EXISTS (SELECT * FROM Managers WHERE ManagerID = @ManagerID)
+	BEGIN
+		UPDATE Stores SET ManagerID = @ManagerID WHERE StoreID = @StoreID;
+	END;
+	ELSE
+		return cast('Can not update manager: Already assigned.' as int);
+END;
+GO
 
----- 8. Change store manager
---CREATE PROCEDURE update_manager @ManagerID INT, @StoreID INT
---AS
---BEGIN 
---	IF EXISTS (SELECT * FROM Managers WHERE ManagerID = @ManagerID AND assignedStore IS NULL)
---	BEGIN
---		UPDATE Stores SET ManagerID = @ManagerID WHERE StoreID = @StoreID;
---	END;
---	ELSE
---		return cast('Can not update manager: Already assigned.' as int);
---END;
---GO
+-- 9. Update Notifications
+GO
+CREATE PROCEDURE UpdateNotifications
+	@ColumnName VARCHAR(128),
+	@NewVal INT,
+	@NotificationId INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
----- 9. Update Notifications
---GO
---CREATE PROCEDURE UpdateNotifications
---	@ColumnName VARCHAR(128),
---	@NewVal INT,
---	@NotificationId INT
---AS
---BEGIN
---	SET NOCOUNT ON;
---	DECLARE @SQL NVARCHAR(MAX)
---	DECLARE @RetCode INT = 0
---	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+	BEGIN TRY
+		SET @SQL = 'UPDATE Notifications SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE NotificationId  = @NotificationId';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @NotificationId INT', @NewVal, @NotificationId;
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END TRY
 
---	BEGIN TRY
---		SET @SQL = 'UPDATE Notifications SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE NotificationId  = @NotificationId';
---		EXEC sp_executesql @SQL, N'@NewVal INT, @NotificationId INT', @NewVal, @NotificationId;
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END TRY
+	BEGIN CATCH
+		SET @RetCode = -1;
+		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END CATCH
+END
 
---	BEGIN CATCH
---		SET @RetCode = -1;
---		SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---	END CATCH
---END
-
+-- 10. Make
 ---- 10. Update Notification Type
 --GO
 --CREATE PROCEDURE UpdateNotificationType
