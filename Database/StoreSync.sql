@@ -690,6 +690,7 @@ BEGIN
 END
 GO
 -- 8. Change store manager
+
 CREATE PROCEDURE update_manager @ManagerID INT, @StoreID INT
 AS
 BEGIN 
@@ -701,7 +702,7 @@ BEGIN
 		DECLARE @RetCode INT = 0
 		DECLARE @ERRNO NVARCHAR(4000) = NULL;
 		SET @RetCode = -1;
-		SET @ERRNO = 'Can not assign store to the manager: Already assigned');
+		SET @ERRNO = 'Can not assign store to the manager: Already assigned';
 		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
 END;
 GO
