@@ -1338,16 +1338,7 @@ AS
 BEGIN
 	SELECT RequestID, ProductID as [RequestedProductId], ProductName , RequestedQuantity, ReqStatus
 	FROM AStockReqs as ASR
-	WHERE ASR.ManagerID = @StoreManager AND ASR.RequestID = @RequestID    --Without table name(ASR) appended infinite recursion occurs. Explore why.
-	-- IGNORE: get result from  ShowPendingRequests  Procedure and then filter by @RequestID
-	--Declare @AllReqsForManager table     
-	--(
-	--  Id int,
-	--  Name varchar(64)
-	--)
-	--Insert into  @AllReqsForManager
-	--Exec ShowPendingRequests 
-	--Select * From @AllReqsForManager
+	WHERE ASR.ManagerID = @StoreManager AND ASR.RequestID = @RequestID    
 END
 
 
