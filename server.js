@@ -100,7 +100,7 @@ passport.deserializeUser(async (login, done) => {
             else
             {
                 const dict = {
-                    user_id: result.recordset[0].ownerID, 
+                    user_id: result.recordset[0].managerID, 
                     role: 'manager'        
                 };
                 done(null, dict);
@@ -281,6 +281,64 @@ app.post("/add_inventory", add_inventory, auth_both, async (req, res) =>
     const {productID, warehouseID} = req.body;
     try {
         const pool = await sql.connect(config);
+        if (req.user.role === 'owner') {
+            const prods = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Products WHERE BusinessID = @id");
+            if (prods.recordset.length === 0)
+                throw "There are no products registered with the business";
+
+            let flag = false;
+            for (let i = 0; !flag && i < prods.recordset.length; i++) {
+                if (prods.recordset[i].ProductID === Number(productID)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Product is not included in the business";
+
+            const mans = await pool.request()
+            .input("OwnerID", req.user.user_id)
+            .execute("StoresWarehouse_ofOwner");
+
+            if (mans.recordset.length === 0)
+                throw "No stores found";
+            
+            flag = false;
+            for (let i = 0; !flag && i < mans.recordset.length; i++) {
+                if (mans.recordset[i].StoreID === Number(warehouseID)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Store is not included in the business";
+        }
+        else {
+            const store = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Stores WHERE ManagerID = @id");
+
+            if (store.recordset.length === 0)
+                throw "No stores found";
+            if (store.recordset[0].StoreID !== Number(warehouseID))
+                throw "You do not have permission for other stores";
+
+            let b_id = store.recordset[0].BusinessID;
+            const prods = await pool.request()
+            .input("id", b_id)
+            .query("SELECT * FROM Products WHERE BusinessID = @id");
+            if (prods.recordset.length === 0)
+                throw "There are no products registered with the business";
+
+            let flag = false;
+            for (let i = 0; !flag && i < prods.recordset.length; i++) {
+                if (prods.recordset[i].ProductID === Number(productID)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Product is not included in the business";
+        }
         await pool.request()
         .input("ProductID", productID)
         .input("WarehouseID", warehouseID)
@@ -305,6 +363,64 @@ app.post("/add_stockreq", add_stock, auth_both, async (req, res) =>
     const {storeID, productID, quantity, message} = req.body;
     try {
         const pool = await sql.connect(config);
+        if (req.user.role === 'owner') {
+            const prods = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Products WHERE BusinessID = @id");
+            if (prods.recordset.length === 0)
+                throw "There are no products registered with the business";
+
+            let flag = false;
+            for (let i = 0; !flag && i < prods.recordset.length; i++) {
+                if (prods.recordset[i].ProductID === Number(productID)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Product is not included in the business";
+
+            const mans = await pool.request()
+            .input("OwnerID", req.user.user_id)
+            .execute("StoresWarehouse_ofOwner");
+
+            if (mans.recordset.length === 0)
+                throw "No stores found";
+            
+            flag = false;
+            for (let i = 0; !flag && i < mans.recordset.length; i++) {
+                if (mans.recordset[i].StoreID === Number(storeID)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Store is not included in the business";
+        }
+        else {
+            const store = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Stores WHERE ManagerID = @id");
+            console.log(store);
+            if (store.recordset.length === 0)
+                throw "No stores found";
+            if (store.recordset[0].StoreID !== Number(storeID))
+                throw "You do not have permission for other stores";
+
+            let b_id = store.recordset[0].BusinessID;
+            const prods = await pool.request()
+            .input("id", b_id)
+            .query("SELECT * FROM Products WHERE BusinessID = @id");
+            if (prods.recordset.length === 0)
+                throw "There are no products registered with the business";
+
+            let flag = false;
+            for (let i = 0; !flag && i < prods.recordset.length; i++) {
+                if (prods.recordset[i].ProductID === Number(productID)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Product is not included in the business";
+        }
         await pool.request()
         .input("ProductID", productID)
         .input("RequestingStoreID", storeID)
@@ -325,6 +441,22 @@ app.delete("/owner/store/:id", auth_owner, async(req, res) =>
     const {id} = req.params;
     try {
         const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("OwnerID", req.user.user_id)
+        .execute("StoresWarehouse_ofOwner");
+
+        if (mans.recordset.length === 0)
+            throw "No stores found";
+        
+        let flag = false;
+        for (let i = 0; !flag && i < mans.recordset.length; i++) {
+            if (mans.recordset[i].StoreID === Number(id)) {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Store is not included in the business";
+
         const record = await pool.request()
         .input("StoreID", id)
         .execute("delete_store");
@@ -345,6 +477,22 @@ app.delete("/owner/product/:id", auth_owner, async (req, res) =>
     const { id } = req.params;
     try {
         const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Products WHERE businessID = @id");
+        if (mans.recordset.length === 0)
+            throw "Product Not found";
+        let flag = false;
+        for (let i = 0; !flag && i < mans.recordset.length; i++)
+        {
+            if (mans.recordset[i].ProductID === Number(id))
+            {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Product is not included in the business";
+
         const record = await pool.request()
         .input("ProductID", id)
         .execute("delete_product");
@@ -365,9 +513,54 @@ app.delete("/stock_req/:id", auth_both, async (req, res) =>
     const { id } = req.params;
     try {
         const pool = await sql.connect(config);
+        if (req.user.role === 'owner')
+        {
+            const mans = await pool.request()
+            .input("OwnerID", req.user.user_id)
+            .execute("StockRequestsForOwner");
+    
+            if (mans.recordset.length === 0)
+                throw "Stock Request not found for the owner";
+
+            let flag = false;
+            for (let i = 0; !flag && i < mans.recordset.length; i++)
+            {
+                if (mans.recordset[i].RequestID === Number(id))
+                {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Stock Request not included in the business";
+        }
+        else {
+            const store = await pool.request()
+            .input("ManagerID", req.user.user_id)
+            .execute("StoreDetailsOfManagers");
+
+            if (store.recordset.length === 0)
+                throw "Manager has not been assigned a store";
+            
+            const reqs = await pool.request()
+            .input("id", stores.recordset[0].StoreID)
+            .query("SELECT * FROM StockRequests WHERE RequestingStoreID = @id");
+            
+            if (reqs.rowsAffected.length === 0)
+                throw "No stock requests for the store";
+
+            let flag = false;
+            for (let i = 0; !flag && i < reqs.recordset.length; i++) {
+                if (mans.recordset[i].RequestID === Number(id)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Stock Request not included in the business";
+        }
         const record = await pool.request()
         .input("RequestID", id)
         .execute("Cancel_StockRequest");
+
         if (record.rowsAffected[0] === 0)
             res.status(404).json({ message: "Stock Request Not found"});
         else
@@ -386,6 +579,23 @@ app.delete("/owner/sto_manager/:id", auth_owner, async (req, res) =>
     // Check if ID related to owner
     try {
         const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Managers WHERE businessID = @id");
+
+        if (mans.recordset.length === 0)
+            throw "Manager Not found";
+        let flag = false;
+        for (let i = 0; !flag && i < mans.recordset.length; i++)
+        {
+            if (mans.recordset[i].managerID === Number(id))
+            {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Manager is not included in the business";
+            
         const record = await pool.request()
         .input("ManagerID", id)
         .execute("delete_manager_withNoAssignedStore");
@@ -402,7 +612,7 @@ app.delete("/owner/sto_manager/:id", auth_owner, async (req, res) =>
 
 app.delete("/owner/notification", auth_owner, async (req, res) =>
 {
-    const { id } = req.user.user_id; 
+    const id = req.user.user_id;
     try {
         const pool = await sql.connect(config);
         const record = await pool.request()
