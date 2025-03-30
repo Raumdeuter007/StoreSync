@@ -1251,6 +1251,29 @@ app.put("/owner/UpdatePrice/:NewVal/:ProductID", auth_owner, async(req,res)=>{
     }
 });
 
+// if product name is changed or subcategories are added 
+// app.put("/owner/UpdateProducts/:columnName/:NewVal/:ProductID", auth_owner, async (req, res) => {
+//     try {
+//         const { columnName, NewVal, ProductID } = req.params;
+//         const allowedColumns = ["ProductName", "Category","PricePerUnit"]; // Define allowed columns
+//         if (!allowedColumns.includes(columnName)) {
+//             return res.status(400).json({ error: "Invalid column name." });
+//         }
+
+//         const pool = await sql.connect(config);
+//         // Validate product ownership before update...
+//         const result = await pool.request()
+//             .input("ColumnName", sql.VarChar, columnName) 
+//             .input("NewVal", sql.VarChar, NewVal)
+//             .input("ProductID", sql.Int, ProductID)
+//             .execute("UpdateProducts"); 
+        
+//         res.json(result.recordset);
+//     } catch (err) {
+//         res.status(500).json({ error: err.message });
+//     }
+// });
+
 // // TODO: Update status to approved, add stock to inventory
 // app.put("/owner/stockreq/accept/:id", auth_owner, async (req, res) => {
 //     const { id } = req.params;
@@ -1311,10 +1334,29 @@ app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
         res.json(result.recordset);
 
     } catch (err){
-        console.log(err);
-        res.status(500).json({err});
+        res.status(500).json({error: err.message});
     }
 });
+
+// app.put("/UpdateRequestStatus/:ColumnName/:NewVal/:StatusId",async(req,res)=>{
+//     try{
+//         const {ColumnName,NewVal,StatusId} = req.params;
+//         const pool = await sql.connect(config);
+//         const result = await pool
+//         .request()
+//         .input("ColumnName",sql.VarChar,ColumnName)
+//         .input("NewVal",sql.Int,NewVal)
+//         .input("StatusId", sql.Int, StatusId)
+//         .query("EXEC UpdateRequestStatus @ColumnName, @NewVal,@StatusId");
+
+
+//         res.json(result.recordset);
+
+//     } catch (err){
+//         res.status(500).json({error: err.message});
+//     }
+
+// });
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
