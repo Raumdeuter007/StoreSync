@@ -661,7 +661,7 @@ app.post("/logout", auth_both, (req, res) => {
     })
 })
 
-app.get("/owner", auth_owner, async(req,res) => {
+app.get("/owner", auth_owner, async(req, res) => {
     try {
         const id = req.user.user_id;
         const pool = await sql.connect(config);
@@ -674,12 +674,12 @@ app.get("/owner", auth_owner, async(req,res) => {
         res.json(result.recordset);
     } 
     catch (err) {
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 });
 
 
-app.get("/manager", auth_man, async(req,res) => {
+app.get("/manager", auth_man, async(req, res) => {
     try {
         const id = req.user.user_id;
         const pool = await sql.connect(config);
@@ -692,17 +692,21 @@ app.get("/manager", auth_man, async(req,res) => {
         res.json(result.recordset);
     } 
     catch (err) {
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
-
-
 });
 
-app.get("/manager/stockReq", auth_man, async(req,res) => {
+app.get("/manager/stockReq", auth_man, async(req, res) => {
     try {
-        const id = req.user.user_id;
         const pool = await sql.connect(config);
+        const store = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Stores WHERE ManagerID = @id");
 
+        if (store.recordset.length === 0)
+            throw "No stores found";
+
+        const id = store.recordset[0].StoreID;
         const result = await pool
             .request()
             .input("StoreID", sql.Int, id)
@@ -710,12 +714,12 @@ app.get("/manager/stockReq", auth_man, async(req,res) => {
     
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 });
 
-app.get("/owner/stockReq", auth_owner, async(req,res) => {
-    try{
+app.get("/owner/stockReq", auth_owner, async (req, res) => {
+    try {
         const id = req.user.user_id;
         const pool = await sql.connect(config);
 
@@ -726,13 +730,13 @@ app.get("/owner/stockReq", auth_owner, async(req,res) => {
     
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 });
 
 // Get Stock Request for a specific store
-app.get("/owner/stockReq/:id", auth_owner, async(req,res) => {
-    try{
+app.get("/owner/stockReq/:id", auth_owner, async (req, res) => {
+    try {
         const o_id = req.user.user_id;
         const { id } = req.params;
         const pool = await sql.connect(config);
@@ -742,6 +746,7 @@ app.get("/owner/stockReq/:id", auth_owner, async(req,res) => {
 
         if (mans.recordset.length === 0)
             throw "No stores found";
+        console.log(mans);
         
         let flag = false;
         for (let i = 0; !flag && i < mans.recordset.length; i++) {
@@ -751,7 +756,7 @@ app.get("/owner/stockReq/:id", auth_owner, async(req,res) => {
         }
         if (!flag)
             throw "Store is not included in the business";
-
+        
         const result = await pool
             .request()
             .input("StoreID", sql.Int, id)
@@ -759,12 +764,12 @@ app.get("/owner/stockReq/:id", auth_owner, async(req,res) => {
     
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 });
 
 // Get Stock of Product in a specific warehouse
-app.get("/stockDetails/:w_id/:p_id", auth_both, async(req,res) => {
+app.get("/stockDetails/:w_id/:p_id", auth_both, async(req, res) => {
     try{
         const {w_id, p_id} = req.params;
         const pool = await sql.connect(config);
@@ -834,7 +839,7 @@ app.get("/stockDetails/:w_id/:p_id", auth_both, async(req,res) => {
         
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({ message: "Can not execute", error: err.message});
+        res.status(500).json({ message: "Can not execute", err});
     }
 });
 
@@ -851,7 +856,7 @@ app.get("/manager/CompletedReqsPastyear", auth_man, async(req,res) => {
         res.json(result.recordset);
     } 
     catch (err) {
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 });
 
@@ -878,12 +883,12 @@ app.get("/manager/CompletedReqsInTimePeriod/:sPeriod/:ePeriod", auth_man, async(
         
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 });
 
 
-app.get("/TopReqestedProdsAtStore_Y/:TopNProdsToRet/:X_Years", auth_man, async(req,res) => {
+app.get("/manager/TopReqestedProdsAtStore_Y/:TopNProdsToRet/:X_Years", auth_man, async(req,res) => {
     try {
         const {TopNProdsToRet, X_Years} = req.params;
         const id = req.user.user_id;
@@ -899,11 +904,11 @@ app.get("/TopReqestedProdsAtStore_Y/:TopNProdsToRet/:X_Years", auth_man, async(r
         res.json(result.recordset);
     } 
     catch (err) {
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 });
 
-app.get("/TopReqestedProdsAtStore_M/:TopNProdsToRet/:X_Months", auth_man, async(req,res) => {
+app.get("/manager/TopReqestedProdsAtStore_M/:TopNProdsToRet/:X_Months", auth_man, async(req,res) => {
     try {
         const {TopNProdsToRet, X_Months} = req.params;
         const id = req.user.user_id;
@@ -918,181 +923,223 @@ app.get("/TopReqestedProdsAtStore_M/:TopNProdsToRet/:X_Months", auth_man, async(
     
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
-    }
+        res.status(500).json({err});
+    }
 }); 
-
-//VerifyManagerLogin
-
-app.get("/VerifyManagerLogin/:username/:password",async(req,res) => {
-    try{
-         const {username,password} = req.params;
-         const pool = await sql.connect(config);
-
-         const result = await pool
-             .request()
-             .input("username",sql.VarChar,username)
-             .input("password",sql.VarChar,password)
-             .query("EXEC VerifyManagerLogin @username,@password ");
-        
-        res.json(result.recordset);
-    } catch (err){
-        res.status(500).json({error: err.message});
-            }
-    }); 
 
 //StoresWarehouse_ofOwner
 
-app.get("/StoresWarehouse_ofOwner/:id", async(req,res) => {
-    try{
-        const {id} = req.params;
-        const pool = await sql.connect(config);
-
-         const result = await pool
-             .request()
-             .input("OwnerID",sql.int,id)
-             .query("EXEC StoresWarehouse_ofOwner @OwnerID ");
-
-        res.json(result.recordset);
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-
-});
-
-//InventoryStockDetails
-
-app.get("/InventoryStockDetails/:id", async(req,res) => {
-    try{
-        const {id} = req.params;
+app.get("/owner/stores", auth_owner, async(req, res) => {
+    try {
+        const id = req.user.user_id;
         const pool = await sql.connect(config);
 
         const result = await pool
             .request()
-            .input("StoreID",sql.Int,id)
-            .query("EXEC InventoryStockDetails @StoreID ");
+            .input("OwnerID", sql.Int, id)
+            .execute("StoresWarehouse_ofOwner");
 
         res.json(result.recordset);
-    } catch (err){
-        res.status(500).json({error: err.message});
+    } catch (err) {
+        res.status(500).json({err});
     }
 
 });
 
-//PendingStockRequests
+// InventoryStockDetails
 
-app.get("/PendingStockRequests/:id",async(req,res) => {
-    try{
-        const {id} = req.params;
+app.get("/manager/inventory", auth_man, async(req, res) => {
+    try {
         const pool = await sql.connect(config);
+        const store = await pool.request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Stores WHERE ManagerID = @id");
 
+        if (store.recordset.length === 0)
+            throw "No stores found assigned to the manager";
+
+        const id = store.recordset[0].StoreID;
         const result = await pool
             .request()
-            .input("StoreID",sql.Int,id)
-            .query("EXEC PendingStockRequests @StoreID ");
+            .input("StoreID", sql.Int, id)
+            .execute("InventoryStockDetails");
+
+        res.json(result.recordset);
+    } catch (err){
+        res.status(500).json({err});
+    }
+
+});
+
+// PendingStockRequests
+
+app.get("/PendingStockRequests", auth_both, async(req,res) => {
+    try {
+        const pool = await sql.connect(config);
+        let id;
+        if (req.user.role === "owner")
+        {
+            const all_store = await pool
+            .request()
+            .input("OwnerID", sql.Int, req.user.user_id)
+            .execute("StoresWarehouse_ofOwner");
+            id = all_store.recordset.map(c => c.StoreID);
+            console.log(id);
+            const all_result = [];
+            for (let i = 0; i < id.length; i++) {
+                const inte = await pool
+                .request()
+                .input("StoreID", sql.Int, id[i])
+                .execute("PendingStockRequests");
+                for (let j = 0; j < inte.recordset.length; j++)
+                    all_result.push(inte.recordset[j]);
+            }
+            console.log(all_result);
+            res.json(all_result);
+        }
+        else 
+        {
+            const store = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Stores WHERE ManagerID = @id");
+            if (store.recordset.length === 0)
+                throw "No stores found assigned to the manager"; 
+            id = store.recordset[0].StoreID;
+            const result = await pool
+            .request()
+            .input("StoreID",sql.Int, id)
+            .query("EXEC PendingStockRequests @StoreID");
         
-        res.json(result.recordset);
+            res.json(result.recordset);
+        }       
     } catch (err){
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 
 });
 
-//NotificationsOfStore   <== TODO: Better name and use storeId/ManagerID instead of OwnerId
-app.get("/NotificationsOfStore/:id",async(req,res) => {
-    try{
-        const {id} = req.params;
+// NotificationsOfStore   <== TODO: Better name and use storeId/ManagerID instead of OwnerId
+app.get("/owner/Notifications", auth_owner, async (req, res) => {
+    try {
+        const id = req.user.user_id;
         const pool = await sql.connect(config);
 
         const result = await pool
             .request()
-            .input("OwnerID",sql.Int,id)
+            .input("OwnerID",sql.Int, id)
             .query("EXEC NotificationsOfStore @OwnerID ");
         
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 
 });
 
-//GetProductsToReorder
+// GetProductsToReorder
 
-app.get("/GetProductsToReorder/:id",async(req,res) => {
-    try{
-        const {id} = req.params;
+app.get("/manager/ReorderProds", auth_man, async (req, res) => {
+    try {
         const pool = await sql.connect(config);
+        const store = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Stores WHERE ManagerID = @id");
+        if (store.recordset.length === 0)
+            throw "No stores found assigned to the manager"; 
 
+        const id = store.recordset[0].StoreID;
         const result = await pool
             .request()
-            .input("WarehouseId",sql.Int,id)
-            .query("EXEC GetProductsToReorder @WarehouseId ");
+            .input("WarehouseId", sql.Int, id)
+            .execute("GetProductsToReorder");
         
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
+        res.status(500).json({err});
     }
 
 });
 
-//StockAcrossWarehouses
+// StockAcrossWarehouses
 
-app.get("/StockAcrossWarehouses/:Bid/:Pid", async (req, res) => {
+app.get("/owner/StockAcrossWarehouses/:Pid", auth_owner, async (req, res) => {
     try {
-        const { Bid, Pid } = req.params;
+        const { Pid } = req.params;
         const pool = await sql.connect(config);
 
+        const prods = await pool.request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Products WHERE businessID = @id");
+        if (prods.recordset.length === 0)
+            throw "Product Not found";
+
+        let flag = false;
+        for (let i = 0; !flag && i < prods.recordset.length; i++)
+        {
+            if (prods.recordset[i].ProductID === Number(Pid))
+            {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Product is not included in the business";
+
+        const Bid = req.user.user_id;
         const result = await pool
             .request()
             .input("BusinessId", sql.Int, Bid)
             .input("ProductId", sql.Int, Pid)
-            .query("EXEC StockAcrossWarehouses @BusinessId, @ProductId");
+            .execute("StockAcrossWarehouses");
 
         res.json(result.recordset);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ err });
     }
 });
 
-//FetchStockRequest
-app.get("/FetchStockRequest/:SMid/:Rid", async (req, res) => {
+// FetchStockRequest
+app.get("/manager/FetchStockRequest/:Rid", auth_man, async (req, res) => {
     try {
-        const { SMid, Rid } = req.params;
+        const { Rid } = req.params;
+        const SMid = req.user.user_id;
         const pool = await sql.connect(config);
 
         const result = await pool
             .request()
             .input("StoreManager", sql.Int, SMid)
             .input("RequestID", sql.Int, Rid)
-            .query("EXEC FetchStockRequest @StoreManager, @RequestID");
-
+            .execute("FetchStockRequest");
+        if (result.recordset.length === 0)
+            throw "Stock Request Not found";
+        
         res.json(result.recordset);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.log(err);
+        res.status(500).json({ err });
     }
 });
 
-//CompletedReqsThisYear
-app.get("/CompletedReqsThisYear/:id", async (req, res) => {
+// CompletedReqsThisYear
+app.get("/manager/CompletedReqsThisYear", auth_man, async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = req.user.user_id;
         const pool = await sql.connect(config);
 
         const result = await pool
             .request()
             .input("ManagerID", sql.Int, id)
-            .query("EXEC CompletedReqsThisYear @ManagerID");
+            .execute("CompletedReqsThisYear");
 
         res.json(result.recordset);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ err });
     }
 });
 
-//CompletedReqsPastMonth
-app.get("/CompletedReqsPastMonth/:id", async (req, res) => {
+// CompletedReqsPastMonth
+app.get("/manager/CompletedReqsPastMonth", auth_man, async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = req.user.user_id;
         const pool = await sql.connect(config);
 
         const result = await pool
@@ -1102,26 +1149,27 @@ app.get("/CompletedReqsPastMonth/:id", async (req, res) => {
 
         res.json(result.recordset);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ err });
     }
 });
 
-//PerformanceCompAcrossQuarters
-app.get("/PerformanceCompAcrossQuarters/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const pool = await sql.connect(config);
+// PerformanceCompAcrossQuarters
+// app.get("/manager/PerformanceCompAcrossQuarters", auth_man, async (req, res) => {
+//     try {
+//         const id = req.user.user_id;
+//         const pool = await sql.connect(config);
 
-        const result = await pool
-            .request()
-            .input("ManagerID", sql.Int, id)
-            .query("EXEC PerformanceCompAcrossQuarters @ManagerID");
+//         const result = await pool
+//             .request()
+//             .input("ManagerID", sql.Int, id)
+//             .execute("PerformanceCompAcrossQuarters");
 
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+//         res.json(result.recordset);
+//     } catch (err) {
+//         console.log(err);
+//         res.status(500).json({ err });
+//     }
+// });
 
 // app.put("/UpdateOwners/:ColumnName/:NewVal/:OwnerID",async(req,res)=>{
 //     try{
@@ -1138,7 +1186,7 @@ app.get("/PerformanceCompAcrossQuarters/:id", async (req, res) => {
 //         res.json(result.recordset);
 
 //     } catch (err){
-//         res.status(500).json({error: err.message});
+//         res.status(500).json({err});
 //     }
 
 // });
@@ -1157,13 +1205,13 @@ app.get("/PerformanceCompAcrossQuarters/:id", async (req, res) => {
 //         res.json(result.recordset);
 
 //     } catch (err){
-//         res.status(500).json({error: err.message});
+//         res.status(500).json({err});
 //     }
 
 // });
 
 app.put("/owner/UpdatePrice/:NewVal/:ProductID", auth_owner, async(req,res)=>{
-    try{
+    try {
         const {NewVal, ProductID} = req.params;
         const ColumnName = "PricePerUnit";
         const pool = await sql.connect(config);
@@ -1173,6 +1221,7 @@ app.put("/owner/UpdatePrice/:NewVal/:ProductID", auth_owner, async(req,res)=>{
         .query("SELECT * FROM Products WHERE businessID = @id");
         if (mans.recordset.length === 0)
             throw "Product Not found";
+        console.log(mans);
         let flag = false;
         for (let i = 0; !flag && i < mans.recordset.length; i++)
         {
@@ -1190,11 +1239,15 @@ app.put("/owner/UpdatePrice/:NewVal/:ProductID", auth_owner, async(req,res)=>{
         .input("NewVal", sql.VarChar, NewVal)
         .input("ProductID", sql.Int, ProductID)
         .execute("UpdateProducts");
-
+        if (result.recordset[0]["RetCode"] === 0)
+            result.recordset[0]["message"] = "Successfully updated price";
+        else
+            result.recordset[0]["message"] = "Could not update price";
         res.json(result.recordset);
 
-    } catch (err){
-        res.status(500).json({error: err.message});
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({err});
     }
 });
 
@@ -1248,7 +1301,7 @@ app.put("/owner/UpdatePrice/:NewVal/:ProductID", auth_owner, async(req,res)=>{
 //         res.json(result.recordset);
 
 //     } catch (err){
-//         res.status(500).json({error: err.message});
+//         res.status(500).json({err});
 //     }
 
 // });
@@ -1262,6 +1315,8 @@ app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
         const all_notes = await pool.request()
         .input("id", id)
         .query("SELECT * FROM Notifications WHERE NotificationID = @id");
+        if (all_notes.recordset.length === 0)
+            throw "There does not exist a notification with the id";
         if (all_notes.recordset[0].RecipientUserID !== req.user.user_id)
             throw "Notification is not for this business";
 
@@ -1271,6 +1326,10 @@ app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
         .input("NewVal", sql.Int, NewVal)
         .input("NotificationId", sql.Int, id)
         .execute("UpdateNotifications");
+        if (result.recordset[0]["RetCode"] === 0)
+            result.recordset[0]["message"] = "Successfully updated Read Status";
+        else
+            result.recordset[0]["message"] = "Could not update read status";
 
         res.json(result.recordset);
 
@@ -1298,219 +1357,6 @@ app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
 //     }
 
 // });
-
-// UpdateManagers
-function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-}
-
-const email = "user@example.com";
-if (isValidEmail(email)) {
-    console.log("Valid email.");
-} else {
-    console.log("Invalid email.");
-}
-
-app.put("/manager/ChangeEmail/:NewVal", auth_man, async(req,res)=>{
-    try{
-        const ManagerID = req.user.user_id;
-        const {NewVal} = req.params;
-        const ColumnName = "email";
-        const pool = await sql.connect(config);
-
-        if (!isValidEmail(NewVal)) {
-            return res.status(400).json({ error: "Invalid email format." });
-        }
-        const result = await pool
-        .request()
-        .input("ColumnName", sql.VarChar, ColumnName)
-        .input("NewVal", sql.VarChar, NewVal)
-        .input("ManagerID", sql.Int, ManagerID)
-        .execute("UpdateManagers");
-
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: "Email updated successfully." });
-        } else {
-            res.status(200).json({ message: "email not changed(Already the same)" });    // could use 204 but I didn't
-        }
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-});
-
-app.put("/manager/ChangeUserName/:NewVal", auth_man, async(req,res)=>{
-    try{
-        const ManagerID = req.user.user_id;
-        const {NewVal} = req.params;
-        const ColumnName = "username";
-        const pool = await sql.connect(config);
-
-        const result = await pool
-        .request()
-        .input("ColumnName", sql.VarChar, ColumnName)
-        .input("NewVal", sql.VarChar, NewVal)
-        .input("ManagerID", sql.Int, ManagerID)
-        .execute("UpdateManagers");
-
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: "User Name updated successfully." });
-        } else {
-            res.status(200).json({ message: "User Name not changed(Already the same)" });
-        }
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-});
-
-app.put("/manager/ChangePassword/:NewVal", auth_man, async(req,res)=>{
-    try{
-        const ManagerID = req.user.user_id;
-        const {NewVal} = req.params;
-        const ColumnName = "password";
-        const pool = await sql.connect(config);
-
-        const result = await pool
-        .request()
-        .input("ColumnName", sql.VarChar, ColumnName)
-        .input("NewVal", sql.VarChar, NewVal)
-        .input("ManagerID", sql.Int, ManagerID)
-        .execute("UpdateManagers");
-
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: "Password updated successfully." });
-        } else {
-            res.status(200).json({ message: "Password not changed(Already the same)" });
-        }
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-});
-
-
-app.put("/manager/ChangePassword/:NewVal", auth_man, async(req,res)=>{
-    try{
-        const ManagerID = req.user.user_id;
-        const {NewVal} = req.params;
-        const ColumnName = "password";
-        const pool = await sql.connect(config);
-
-        const result = await pool
-        .request()
-        .input("ColumnName", sql.VarChar, ColumnName)
-        .input("NewVal", sql.VarChar, NewVal)
-        .input("ManagerID", sql.Int, ManagerID)
-        .execute("UpdateManagers");
-
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: "Password updated successfully." });
-        } else {
-            res.status(200).json({ message: "Password not changed(Already the same)" });
-        }
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-});
-
-//Not allowing buisnessID change from Mangager's view assuming only owner can reallocate managers to another buisness
-
-//UpdateStores
-
-// For all columns except managerID
-app.put("/UpdateStores/:columnName/:NewVal",auth_both, async(req,res)=>{
-    try{
-        const {columnName,NewVal} = req.params;
-        const StoreID = req.user.user_id;
-        const allowedColumns = ["StoreName", "Address","PhoneNumber"]; //Define allowed columns
-        if (!allowedColumns.includes(columnName)) {
-            return res.status(400).json({ error: "Invalid column name." });
-        }
-        const pool = await sql.connect(config);
-
-        const result = await pool
-        .request()
-        .input("ColumnName", sql.VarChar, columnName) 
-        .input("NewVal", sql.VarChar, NewVal)
-        .input("StoreID", sql.Int, StoreID)
-        .execute("UpdateStores"); 
-        
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: `${columnName} updated successfully.` });
-        } else {
-            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
-        }
-        
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-
-// For changing managerID only
-app.put("/UpdateStores/:NewVal",auth_owner, async(req,res)=>{
-    try{
-        const StoreID = req.user.user_id;
-        const {NewVal} = req.params;
-        const ColumnName = "StoreName";
-        const pool = await sql.connect(config);
-
-        const result = await pool
-        .request()
-        .input("ColumnName", sql.VarChar, ColumnName)
-        .input("NewVal", sql.VarChar, NewVal)
-        .input("StoreID", sql.Int, StoreID)
-        .execute("UpdateStores"); 
-
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: "ManagerID updated successfully." });
-        } else {
-            res.status(200).json({ message: "ManagerID not changed(Already the same)" });
-        }
-
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-}
-);
-
-
-//UpdateStockRequests
-
-app.put("/UpdateStockRequests/:columnName/:NewVal",auth_both, async(req,res)=>{
-    try{
-        const {columnName,NewVal} = req.params;
-        const allowedColumns = ["RequestedQuantity","ReqStatus","approvedby","fullfillmentdate"]; //Define allowed columns
-        if (!allowedColumns.includes(columnName)) {
-            return res.status(400).json({ error: "Invalid column name." });
-        }
-        const pool = await sql.connect(config);
-
-        const result = await pool
-        .request()
-        .input("ColumnName", sql.VarChar, columnName) 
-        .input("NewVal", sql.VarChar, NewVal)
-        .execute("UpdateStockRequests"); 
-        
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: `${columnName} updated successfully.` });
-        } else {
-            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
-        }
-        
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-//UpdateNotificationType Not needed
-
-//UpdateReadStatus not needed
-
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
