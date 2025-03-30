@@ -661,309 +661,419 @@ app.post("/logout", auth_both, (req, res) => {
     })
 })
 
-app.get("/owner/stores", get_req, (req, res) =>
-{
+app.get("/owner", auth_owner, async(req,res) => {
+    try {
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("OwnerID", sql.Int, id)
+            .execute("Business_detailOfOwner");
+        
+        res.json(result.recordset);
+    } 
+    catch (err) {
+        res.status(500).json({error: err.message});
+    }
+});
+
+
+app.get("/manager", auth_man, async(req,res) => {
+    try {
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id)
+            .execute("StoreDetailsOfManagers");
+    
+        res.json(result.recordset);
+    } 
+    catch (err) {
+        res.status(500).json({error: err.message});
+    }
+
 
 });
-app.get("/Business_detailOfOwner/:id",async(req,res) => {
-    try{
-         const {id} = req.params;
-         const pool = await sql.connect(config);
 
-         const result = await pool
-             .request()
-             .input("OwnerID",sql.Int,id)
-             .query("EXEC Business_detailOfOwner @OwnerID");
-        
+app.get("/manager/stockReq", auth_man, async(req,res) => {
+    try {
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("StoreID", sql.Int, id)
+            .execute("stockRequestsOfStore");
+    
         res.json(result.recordset);
     } catch (err){
         res.status(500).json({error: err.message});
-    }
-
-
+    }
 });
 
-
-app.get("/StoreDetailsOfManagers/:id",async(req,res) => {
+app.get("/owner/stockReq", auth_owner, async(req,res) => {
     try{
-         const {id} = req.params;
-         const pool = await sql.connect(config);
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
 
-         const result = await pool
-             .request()
-             .input("ManagerID",sql.Int,id)
-             .query("EXEC StoreDetailsOfManagers @ManagerID");
-        
+        const result = await pool
+            .request()
+            .input("OwnerID", sql.Int, id)
+            .execute("StockRequestsForOwner");
+    
         res.json(result.recordset);
     } catch (err){
         res.status(500).json({error: err.message});
-    }
-
-
+    }
 });
 
-app.get("/stockRequestsOfStore/:id",async(req,res) => {
+// Get Stock Request for a specific store
+app.get("/owner/stockReq/:id", auth_owner, async(req,res) => {
     try{
-         const {id} = req.params;
-         const pool = await sql.connect(config);
+        const o_id = req.user.user_id;
+        const { id } = req.params;
+        const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("OwnerID", o_id)
+        .execute("StoresWarehouse_ofOwner");
 
-         const result = await pool
-             .request()
-             .input("StoreID",sql.Int,id)
-             .query("EXEC stockRequestsOfStore @StoreID");
+        if (mans.recordset.length === 0)
+            throw "No stores found";
         
+        let flag = false;
+        for (let i = 0; !flag && i < mans.recordset.length; i++) {
+            if (mans.recordset[i].StoreID === Number(id)) {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Store is not included in the business";
+
+        const result = await pool
+            .request()
+            .input("StoreID", sql.Int, id)
+            .execute("stockRequestsOfStore");
+    
         res.json(result.recordset);
     } catch (err){
         res.status(500).json({error: err.message});
-    }
-
-
+    }
 });
 
-app.get("/StockRequestsForOwner/:id",async(req,res) => {
+// Get Stock of Product in a specific warehouse
+app.get("/stockDetails/:w_id/:p_id", auth_both, async(req,res) => {
     try{
-         const {id} = req.params;
-         const pool = await sql.connect(config);
+        const {w_id, p_id} = req.params;
+        const pool = await sql.connect(config);
+        if (req.user.role === 'owner') {
+            const prods = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Products WHERE BusinessID = @id");
+            if (prods.recordset.length === 0)
+                throw "There are no products registered with the business";
 
-         const result = await pool
-             .request()
-             .input("OwnerID",sql.Int,id)
-             .query("EXEC StockRequestsForOwner @OwnerID");
+            let flag = false;
+            for (let i = 0; !flag && i < prods.recordset.length; i++) {
+                if (prods.recordset[i].ProductID === Number(p_id)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Product is not included in the business";
+
+            const mans = await pool.request()
+            .input("OwnerID", req.user.user_id)
+            .execute("StoresWarehouse_ofOwner");
+
+            if (mans.recordset.length === 0)
+                throw "No stores found";
+            
+            flag = false;
+            for (let i = 0; !flag && i < mans.recordset.length; i++) {
+                if (mans.recordset[i].StoreID === Number(w_id)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Store is not included in the business";
+        }
+        else {
+            const store = await pool.request()
+            .input("id", req.user.user_id)
+            .query("SELECT * FROM Stores WHERE ManagerID = @id");
+
+            if (store.recordset.length === 0)
+                throw "No stores found";
+            if (store.recordset[0].StoreID !== Number(w_id))
+                throw "You do not have permission for other stores";
+
+            let b_id = store.recordset[0].BusinessID;
+            const prods = await pool.request()
+            .input("id", b_id)
+            .query("SELECT * FROM Products WHERE BusinessID = @id");
+            if (prods.recordset.length === 0)
+                throw "There are no products registered with the business";
+
+            let flag = false;
+            for (let i = 0; !flag && i < prods.recordset.length; i++) {
+                if (prods.recordset[i].ProductID === Number(p_id)) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Product is not included in the business";
+        }
+        const result = await pool
+            .request()
+            .input("WarehouseID", sql.Int, w_id)
+            .input("ProductID", sql.Int, p_id)
+            .execute("StockDetails");
         
         res.json(result.recordset);
     } catch (err){
-        res.status(500).json({error: err.message});
-    }
-
-
+        res.status(500).json({ message: "Can not execute", error: err.message});
+    }
 });
 
+app.get("/manager/CompletedReqsPastyear", auth_man, async(req,res) => {
+    try {
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
 
-app.get("/StockDetails/:w_id/:p_id",async(req,res) => {
-    try{
-         const {w_id,p_id} = req.params;
-         const pool = await sql.connect(config);
-
-         const result = await pool
-             .request()
-             .input("WarehouseID",sql.Int,w_id)
-             .input("ProductID",sql.Int,p_id)
-             .query("EXEC StockDetails @WarehouseID, @ProductID ");
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id) 
+            .execute("CompletedReqsPastyear");
         
         res.json(result.recordset);
-    } catch (err){
+    } 
+    catch (err) {
         res.status(500).json({error: err.message});
-    }
-
-
+    }
 });
 
-app.get("/CompletedReqsPastyear/:id",async(req,res) => {
-    try{
-         const {id} = req.params;
-         const pool = await sql.connect(config);
 
-         const result = await pool
-             .request()
-             .input("ManagerID",sql.Int,id) 
-             .query("EXEC CompletedReqsPastyear @ManagerID ");
+app.get("/manager/CompletedReqsInTimePeriod/:sPeriod/:ePeriod", auth_man, async(req,res) => {
+    try {
+        const {sPeriod, ePeriod} = req.params;
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
         
-        res.json(result.recordset);
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-
-
-});
-
-
-app.get("/CompletedReqsInTimePeriod/:id/:sPeriod/:ePeriod",async(req,res) => {
-    try{
-         const {id,sPeriod,ePeriod} = req.params;
-         const pool = await sql.connect(config);
-         
-         const startDate = new Date(sPeriod);
+        const startDate = new Date(sPeriod);
         const endDate = new Date(ePeriod);
 
-         
         if (isNaN(startDate) || isNaN(endDate)) {
             return res.status(400).json({ error: "Invalid date format." });
         }
 
-         const result = await pool
-             .request()
-             .input("ManagerID",sql.Int,id)
-             .input("PeriodStart",sql.DateTime,startDate)
-             .input("PeriodEnd",sql.DateTime,endDate) 
-             .query("EXEC CompletedReqsInTimePeriod @ManagerID,@PeriodStart, @PeriodEnd ");
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id)
+            .input("PeriodStart", sql.DateTime, startDate)
+            .input("PeriodEnd", sql.DateTime, endDate) 
+            .execute("CompletedReqsInTimePeriod");
         
         res.json(result.recordset);
     } catch (err){
         res.status(500).json({error: err.message});
-    }
-
-
+    }
 });
 
 
-app.get("/TopReqestedProdsAtStore_Y/:id/:TopNProdsToRet/:X_Years",async(req,res) => {
-    try{
-         const {id,TopNProdsToRet,X_Years} = req.params;
-         const pool = await sql.connect(config);
+app.get("/TopReqestedProdsAtStore_Y/:TopNProdsToRet/:X_Years", auth_man, async(req,res) => {
+    try {
+        const {TopNProdsToRet, X_Years} = req.params;
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
 
-         const result = await pool
-             .request()
-             .input("ManagerID",sql.Int,id)
-             .input("TopNProdsToRet",sql.Int,TopNProdsToRet)
-             .input("X_Years",sql.Int,X_Years) 
-             .query("EXEC TopReqestedProdsAtStore_Y @ManagerID,@TopNProdsToRet, @X_Years ");
-        
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id)
+            .input("TopNProdsToRet", sql.Int, TopNProdsToRet)
+            .input("X_Years", sql.Int, X_Years) 
+            .execute("TopReqestedProdsAtStore_Y");
+    
         res.json(result.recordset);
-    } catch (err){
+    } 
+    catch (err) {
         res.status(500).json({error: err.message});
-    }
-
-
+    }
 });
 
-app.get("/TopReqestedProdsAtStore_M/:id/:TopNProdsToRet/:X_Months",async(req,res) => {
-    try{
-         const {id,TopNProdsToRet,X_Months} = req.params;
-         const pool = await sql.connect(config);
+app.get("/TopReqestedProdsAtStore_M/:TopNProdsToRet/:X_Months", auth_man, async(req,res) => {
+    try {
+        const {TopNProdsToRet, X_Months} = req.params;
+        const id = req.user.user_id;
+        const pool = await sql.connect(config);
 
-         const result = await pool
-             .request()
-             .input("ManagerID",sql.Int,id)
-             .input("TopNProdsToRet",sql.Int,TopNProdsToRet)
-             .input("X_Months",sql.Int,X_Years) 
-             .query("EXEC TopReqestedProdsAtStore_M @ManagerID,@TopNProdsToRet, @X_Months ");
-        
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id)
+            .input("TopNProdsToRet", sql.Int, TopNProdsToRet)
+            .input("X_Months", sql.Int, X_Months) 
+            .execute("TopReqestedProdsAtStore_M");
+    
         res.json(result.recordset);
     } catch (err){
         res.status(500).json({error: err.message});
-    }
-
-
+    }
 }); 
-app.put("/UpdateOwners/:ColumnName/:NewVal/:OwnerID",async(req,res)=>{
+
+// app.put("/UpdateOwners/:ColumnName/:NewVal/:OwnerID",async(req,res)=>{
+//     try{
+//         const {ColumnName,NewVal,OwnerID} = req.params;
+//         const pool = await sql.connect(config);
+//         const result = await pool
+//         .request()
+//         .input("ColumnName",sql.VarChar,ColumnName)
+//         .input("NewVal",sql.VarChar,NewVal)
+//         .input("OwnerId", sql.Int, OwnerID)
+//         .query("EXEC UpdateOwners @ColumnName, @NewVal, @OwnerId");
+
+
+//         res.json(result.recordset);
+
+//     } catch (err){
+//         res.status(500).json({error: err.message});
+//     }
+
+// });
+// app.put("/UpdateBusiness/:ColumnName/:NewVal/:BusinessId",async(req,res)=>{
+//     try{
+//         const {ColumnName,NewVal,BusinessID} = req.params;
+//         const pool = await sql.connect(config);
+//         const result = await pool
+//         .request()
+//         .input("ColumnName",sql.VarChar,ColumnName)
+//         .input("NewVal",sql.VarChar,NewVal)
+//         .input("BusinessId", sql.Int, BusinessID)
+//         .query("EXEC UpdateBusiness @ColumnName, @NewVal, @BusinessId");
+
+
+//         res.json(result.recordset);
+
+//     } catch (err){
+//         res.status(500).json({error: err.message});
+//     }
+
+// });
+
+app.put("/owner/UpdatePrice/:NewVal/:ProductID", auth_owner, async(req,res)=>{
     try{
-        const {ColumnName,NewVal,OwnerID} = req.params;
+        const {NewVal, ProductID} = req.params;
+        const ColumnName = "PricePerUnit";
         const pool = await sql.connect(config);
+
+        const mans = await pool.request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Products WHERE businessID = @id");
+        if (mans.recordset.length === 0)
+            throw "Product Not found";
+        let flag = false;
+        for (let i = 0; !flag && i < mans.recordset.length; i++)
+        {
+            if (mans.recordset[i].ProductID === Number(ProductID))
+            {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Product is not included in the business";
+
         const result = await pool
         .request()
-        .input("ColumnName",sql.VarChar,ColumnName)
-        .input("NewVal",sql.VarChar,NewVal)
-        .input("OwnerId", sql.Int, OwnerID)
-        .query("EXEC UpdateOwners @ColumnName, @NewVal, @OwnerId");
-
-
-        res.json(result.recordset);
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-
-});
-app.put("/UpdateBusiness/:ColumnName/:NewVal/:BusinessId",async(req,res)=>{
-    try{
-        const {ColumnName,NewVal,BusinessID} = req.params;
-        const pool = await sql.connect(config);
-        const result = await pool
-        .request()
-        .input("ColumnName",sql.VarChar,ColumnName)
-        .input("NewVal",sql.VarChar,NewVal)
-        .input("BusinessId", sql.Int, BusinessID)
-        .query("EXEC UpdateBusiness @ColumnName, @NewVal, @BusinessId");
-
-
-        res.json(result.recordset);
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-
-});
-
-app.put("/UpdateProducts/:ColumnName/:NewVal/:ProductID",async(req,res)=>{
-    try{
-        const {ColumnName,NewVal,ProductID} = req.params;
-        const pool = await sql.connect(config);
-        const result = await pool
-        .request()
-        .input("ColumnName",sql.VarChar,ColumnName)
-        .input("NewVal",sql.VarChar,NewVal)
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
         .input("ProductID", sql.Int, ProductID)
-        .query("EXEC UpdateProducts @ColumnName, @NewVal, @ProductId");
-
+        .execute("UpdateProducts");
 
         res.json(result.recordset);
 
     } catch (err){
         res.status(500).json({error: err.message});
-    }
-
+    }
 });
 
-app.put("/UpdateInventory/:ColumnName/:NewVal/:WarehouseID/:ProductID",async(req,res)=>{
+// // TODO: Update status to approved, add stock to inventory
+// app.put("/owner/stockreq/accept/:id", auth_owner, async (req, res) => {
+//     const { id } = req.params;
+//     const pool = await sql.connect(config);
+
+//     const res = await pool.request()
+//     .input("id", id)
+//     .query("SELECT * FROM AStockReqs WHERE RequestID = @id");
+    
+// });
+
+// app.put("/UpdateInventory/:ColumnName/:NewVal/:WarehouseID/:ProductID",async(req,res)=>{
+//     try{
+//         const {ColumnName,NewVal,WarehouseID,ProductID} = req.params;
+//         const pool = await sql.connect(config);
+//         const result = await pool
+//         .request()
+//         .input("ColumnName",sql.VarChar,ColumnName)
+//         .input("NewVal",sql.Int,NewVal)
+//         .input("ProductID", sql.Int, ProductID)
+//         .input("WarehouseID", sql.Int, WarehouseID)
+//         .query("EXEC UpdateInventory @ColumnName, @NewVal,@WarehouseID, @ProductId");
+
+
+//         res.json(result.recordset);
+
+//     } catch (err){
+//         res.status(500).json({error: err.message});
+//     }
+
+// });
+
+app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
     try{
-        const {ColumnName,NewVal,WarehouseID,ProductID} = req.params;
+        const { id } = req.params;
+        const ColumnName = "ReadStatus";
+        const NewVal = 2;
         const pool = await sql.connect(config);
+        const all_notes = await pool.request()
+        .input("id", id)
+        .query("SELECT * FROM Notifications WHERE NotificationID = @id");
+        if (all_notes.recordset[0].RecipientUserID !== req.user.user_id)
+            throw "Notification is not for this business";
+
         const result = await pool
         .request()
-        .input("ColumnName",sql.VarChar,ColumnName)
-        .input("NewVal",sql.Int,NewVal)
-        .input("ProductID", sql.Int, ProductID)
-        .input("WarehouseID", sql.Int, WarehouseID)
-        .query("EXEC UpdateInventory @ColumnName, @NewVal,@WarehouseID, @ProductId");
-
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.Int, NewVal)
+        .input("NotificationId", sql.Int, id)
+        .execute("UpdateNotifications");
 
         res.json(result.recordset);
 
     } catch (err){
         res.status(500).json({error: err.message});
-    }
-
+    }
 });
 
-app.put("/UpdateNotifications/:ColumnName/:NewVal/:NotificationId",async(req,res)=>{
-    try{
-        const {ColumnName,NewVal,NotificationId} = req.params;
-        const pool = await sql.connect(config);
-        const result = await pool
-        .request()
-        .input("ColumnName",sql.VarChar,ColumnName)
-        .input("NewVal",sql.Int,NewVal)
-        .input("NotificationId", sql.Int, NotificationId)
-        .query("EXEC UpdateNotifications @ColumnName, @NewVal,@NotificationId");
+// app.put("/UpdateRequestStatus/:ColumnName/:NewVal/:StatusId",async(req,res)=>{
+//     try{
+//         const {ColumnName,NewVal,StatusId} = req.params;
+//         const pool = await sql.connect(config);
+//         const result = await pool
+//         .request()
+//         .input("ColumnName",sql.VarChar,ColumnName)
+//         .input("NewVal",sql.Int,NewVal)
+//         .input("StatusId", sql.Int, StatusId)
+//         .query("EXEC UpdateRequestStatus @ColumnName, @NewVal,@StatusId");
 
 
-        res.json(result.recordset);
+//         res.json(result.recordset);
 
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
+//     } catch (err){
+//         res.status(500).json({error: err.message});
+//     }
 
-});
-
-app.put("/UpdateRequestStatus/:ColumnName/:NewVal/:StatusId",async(req,res)=>{
-    try{
-        const {ColumnName,NewVal,StatusId} = req.params;
-        const pool = await sql.connect(config);
-        const result = await pool
-        .request()
-        .input("ColumnName",sql.VarChar,ColumnName)
-        .input("NewVal",sql.Int,NewVal)
-        .input("StatusId", sql.Int, StatusId)
-        .query("EXEC UpdateRequestStatus @ColumnName, @NewVal,@StatusId");
-
-
-        res.json(result.recordset);
-
-    } catch (err){
-        res.status(500).json({error: err.message});
-    }
-
-});
+// });
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
