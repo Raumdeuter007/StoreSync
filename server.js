@@ -783,7 +783,7 @@ app.get("/CompletedReqsInTimePeriod/:id/:sPeriod/:ePeriod",async(req,res) => {
          const pool = await sql.connect(config);
          
          const startDate = new Date(sPeriod);
-        const endDate = new Date(ePeriod);
+         const endDate = new Date(ePeriod);
 
          
         if (isNaN(startDate) || isNaN(endDate)) {
@@ -842,9 +842,213 @@ app.get("/TopReqestedProdsAtStore_M/:id/:TopNProdsToRet/:X_Months",async(req,res
     } catch (err){
         res.status(500).json({error: err.message});
     }
-
-
 }); 
+
+//VerifyManagerLogin
+
+app.get("/VerifyManagerLogin/:username/:password",async(req,res) => {
+    try{
+         const {username,password} = req.params;
+         const pool = await sql.connect(config);
+
+         const result = await pool
+             .request()
+             .input("username",sql.VarChar,username)
+             .input("password",sql.VarChar,password)
+             .query("EXEC VerifyManagerLogin @username,@password ");
+        
+        res.json(result.recordset);
+    } catch (err){
+        res.status(500).json({error: err.message});
+            }
+    }); 
+
+//StoresWarehouse_ofOwner
+
+app.get("/StoresWarehouse_ofOwner/:id", async(req,res) => {
+    try{
+        const {id} = req.params;
+        const pool = await sql.connect(config);
+
+         const result = await pool
+             .request()
+             .input("OwnerID",sql.int,id)
+             .query("EXEC StoresWarehouse_ofOwner @OwnerID ");
+
+        res.json(result.recordset);
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+
+});
+
+//InventoryStockDetails
+
+app.get("/InventoryStockDetails/:id", async(req,res) => {
+    try{
+        const {id} = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("StoreID",sql.Int,id)
+            .query("EXEC InventoryStockDetails @StoreID ");
+
+        res.json(result.recordset);
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+
+});
+
+//PendingStockRequests
+
+app.get("/PendingStockRequests/:id",async(req,res) => {
+    try{
+        const {id} = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("StoreID",sql.Int,id)
+            .query("EXEC PendingStockRequests @StoreID ");
+        
+        res.json(result.recordset);
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+
+});
+
+//NotificationsOfStore   <== TODO: Better name and use storeId/ManagerID instead of OwnerId
+app.get("/NotificationsOfStore/:id",async(req,res) => {
+    try{
+        const {id} = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("OwnerID",sql.Int,id)
+            .query("EXEC NotificationsOfStore @OwnerID ");
+        
+        res.json(result.recordset);
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+
+});
+
+//GetProductsToReorder
+
+app.get("/GetProductsToReorder/:id",async(req,res) => {
+    try{
+        const {id} = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("WarehouseId",sql.Int,id)
+            .query("EXEC GetProductsToReorder @WarehouseId ");
+        
+        res.json(result.recordset);
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+
+});
+
+//StockAcrossWarehouses
+
+app.get("/StockAcrossWarehouses/:Bid/:Pid", async (req, res) => {
+    try {
+        const { Bid, Pid } = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("BusinessId", sql.Int, Bid)
+            .input("ProductId", sql.Int, Pid)
+            .query("EXEC StockAcrossWarehouses @BusinessId, @ProductId");
+
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+//FetchStockRequest
+app.get("/FetchStockRequest/:SMid/:Rid", async (req, res) => {
+    try {
+        const { SMid, Rid } = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("StoreManager", sql.Int, SMid)
+            .input("RequestID", sql.Int, Rid)
+            .query("EXEC FetchStockRequest @StoreManager, @RequestID");
+
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+//CompletedReqsThisYear
+app.get("/CompletedReqsThisYear/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id)
+            .query("EXEC CompletedReqsThisYear @ManagerID");
+
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+//CompletedReqsPastMonth
+app.get("/CompletedReqsPastMonth/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id)
+            .query("EXEC CompletedReqsPastMonth @ManagerID");
+
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+//PerformanceCompAcrossQuarters
+app.get("/PerformanceCompAcrossQuarters/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pool = await sql.connect(config);
+
+        const result = await pool
+            .request()
+            .input("ManagerID", sql.Int, id)
+            .query("EXEC PerformanceCompAcrossQuarters @ManagerID");
+
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
+
+
 app.put("/UpdateOwners/:ColumnName/:NewVal/:OwnerID",async(req,res)=>{
     try{
         const {ColumnName,NewVal,OwnerID} = req.params;
