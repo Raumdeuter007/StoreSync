@@ -693,12 +693,16 @@ GO
 CREATE PROCEDURE update_manager @ManagerID INT, @StoreID INT
 AS
 BEGIN 
-	IF EXISTS (SELECT * FROM Managers WHERE ManagerID = @ManagerID)
+	IF NOT EXISTS (SELECT * FROM Stores WHERE ManagerID = @ManagerID)
 	BEGIN
 		UPDATE Stores SET ManagerID = @ManagerID WHERE StoreID = @StoreID;
 	END;
 	ELSE
-		return cast('Can not update manager: Already assigned.' as int);
+		DECLARE @RetCode INT = 0
+		DECLARE @ERRNO NVARCHAR(4000) = NULL;
+		SET @RetCode = -1;
+		SET @ERRNO = 'Can not assign store to the manager: Already assigned');
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
 END;
 GO
 
@@ -857,16 +861,22 @@ BEGIN
 END
 GO
 
-Insert Into Owners
-values('helli', 'hellybelly@jelly.com','bellyhelly124', '1011011')
+INSERT INTO Owners
+VALUES ('helli', 'hellybelly@jelly.com','bellyhelly124', 
+'$2b$10$xh.XjKT5JDmCNIqaehT4WOTPza6JyHs3TKmA5bgcqcRmIrfgNL23m') -- 1011011
 
 INSERT INTO Owners (name, email, username, password)  
 VALUES  
-('John Doe', 'john.doe@email.com', 'johndoe', 'SecurePass123'),  
-('Alice Smith', 'alice.smith@email.com', 'alicesmith', 'Alice#2024'),  
-('Michael Johnson', 'michael.j@email.com', 'mikejohnson', 'MJ@SuperSecure1'),  
-('Emily Davis', 'emily.d@email.com', 'emilyd', 'Davis!321'),  
-('Robert Brown', 'robert.b@email.com', 'robbrown', 'Brownie2024!');
+('John Doe', 'john.doe@email.com', 'johndoe', 
+'$2b$10$1lP6UowbUO.TC8Vhh6GlWOmMYcHOkzr7l/tl0P/ScD7SqtADpXV7a'), -- SecurePass123
+('Alice Smith', 'alice.smith@email.com', 'alicesmith', 
+'$2b$10$u6/48GvZWRmsnwbAjzPY9eP0W24Jbj43lTqYBe1dBdSnh2Mt6VN7q'),  -- Alice#2024
+('Michael Johnson', 'michael.j@email.com', 'mikejohnson', 
+'$2b$10$HnJMbTjd9lQDSOgLZmKUt.I6MdWJFYt0RTHrG6bMLNJ/SZHmXHOte'), -- MJ@SuperSecure1 
+('Emily Davis', 'emily.d@email.com', 'emilyd', 
+'$2b$10$X3PPPFktO/ET6FE098QxEu2oEkdq1kXXiadNEha6qYlWna6GAhS7K'), -- Davis!321  
+('Robert Brown', 'robert.b@email.com', 'robbrown', 
+'$2b$10$.00u4vPnsZKSh5o/QPFy9OIuodZTa2eY.z6Yf7JTdqOjfCJswplwK'); -- Brownie2024!
 
 INSERT INTO Business (BusinessName, HQAddress, OwnerID)  
 VALUES  
@@ -879,16 +889,26 @@ VALUES
 
 INSERT INTO Managers (name, email, username, password, businessID)  
 VALUES  
-('Alice Johnson', 'alice.johnson@email.com', 'aliceJ', 'securepass1', 1),  
-('Bob Smith', 'bob.smith@email.com', 'bobS', 'securepass2', 1),  
-('Charlie Brown', 'charlie.brown@email.com', 'charlieB', 'securepass3', 2),  
-('Diana White', 'diana.white@email.com', 'dianaW', 'securepass4', 3),  
-('Ethan Green', 'ethan.green@email.com', 'ethanG', 'securepass5', 3),  
-('Fiona Black', 'fiona.black@email.com', 'fionaB', 'securepass6', 4),  
-('George Harris', 'george.harris@email.com', 'georgeH', 'securepass7', 4),  
-('Hannah King', 'hannah.king@email.com', 'hannahK', 'securepass8', 5),  
-('Ian Wright', 'ian.wright@email.com', 'ianW', 'securepass9', 6),  
-('Julia Adams', 'julia.adams@email.com', 'juliaA', 'securepass10', 6);
+('Alice Johnson', 'alice.johnson@email.com', 'aliceJ', 
+'$2b$10$aRZlgPdbDJHJAFcgCEZzTe0bwPv5nN6cw.hWE/Fzq1sqO1UaW317S', 1), -- securepass1  
+('Bob Smith', 'bob.smith@email.com', 'bobS', 
+'$2b$10$ZycoRN3jdmzSfgqGQVha.OmUDBgM3MoqrVo.5q27F4kN81XCawbjW', 1),  -- securepass2
+('Charlie Brown', 'charlie.brown@email.com', 'charlieB', 
+'$2b$10$V3KWz77aiD19HGX1FvQabu.y4A2GoxpeVvMNvi9HipEFnCOHUF8cS', 2), -- securepass3 
+('Diana White', 'diana.white@email.com', 'dianaW', 
+'$2b$10$J3sn5odY0CccdinV1Ot8qOP9U/POOOjYCuIfc.5Tz6yvRJz0RaYyS', 3),  -- securepass4
+('Ethan Green', 'ethan.green@email.com', 'ethanG', 
+'$2b$10$LuKTOrBNB11rF3/y2QmcK.mNlP9bu1IgPHIBuUPEmBjIM5Ky7ntaS', 3),  -- securepass5
+('Fiona Black', 'fiona.black@email.com', 'fionaB', 
+'$2b$10$xkSKPHRG3fnqb7MoPrI6m.FVx4IuDsriOlQgVxBK92bdyEqq37/h6', 4),  -- securepass6
+('George Harris', 'george.harris@email.com', 'georgeH', 
+'$2b$10$DKPUy0Z6a2IJa0u9dD5oTuysCB97sMzxtSdYYmg/B11AGysbfAoWq', 4),  -- securepass7
+('Hannah King', 'hannah.king@email.com', 'hannahK', 
+'$2b$10$IDkfUGuKXXdw2.cAbL3KNO86GmYix1WWvBn.N/E/jWeex4/pr2p8i', 5),  -- securepass8
+('Ian Wright', 'ian.wright@email.com', 'ianW', 
+'$2b$10$2f7a0WDWaaluTM0BOge1s.JT7gaRH6ZECJPquDMBAeG8XU2M0UIhq', 6),  -- securepass9
+('Julia Adams', 'julia.adams@email.com', 'juliaA', 
+'$2b$10$OGbSoAi0Em7kuxFrQ81bte58x7J04yNlzsAm2hPNiSNMfPWmdknji', 6); -- securepass10
 
 
 -- Insert exactly 7 stores, each assigned to a unique valid manager (1 to 10)

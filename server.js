@@ -54,7 +54,7 @@ passport.use('manager',
             else if (!await helper.comparePassword(password, result.recordset[0].password)) 
                 done(null, false); 
 
-            console.log(result);
+            // console.log(result);
             if (result.recordsets.length === 0)
                 done(null, false);  
             else {
@@ -1315,6 +1315,43 @@ app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
             result.recordset[0]["message"] = "Could not update read status";
 
         res.json(result.recordset);
+
+    } catch (err){
+        console.log(err);
+        res.status(500).json({err});
+    }
+});
+
+app.put("/owner/sto_manager/:Sid/:Mid", auth_owner, async (req, res) => {
+    try{
+        const { Sid, Mid } = req.params;
+        const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("id", req.user.user_id)
+        .input("Mid", Mid)
+        .query("SELECT * FROM Managers WHERE businessID = @id AND managerID = @Mid");
+        if (mans.recordset.length === 0)
+            throw "Manager Not found in the business";
+
+        const stores = await pool.request()
+        .input("id", req.user.user_id)
+        .input("Sid", Sid)
+        .query("SELECT * FROM Stores WHERE businessID = @id AND StoreID = @Sid");
+
+        if (stores.recordset.length === 0)
+            throw "Store Not found in the business";
+        
+        const result = await pool
+        .request()
+        .input("ManagerID", sql.Int, Mid)
+        .input("StoreId", sql.Int, Sid)
+        .execute("update_manager");
+        
+        console.log(result);
+        if (result.recordset)
+            res.json(result.recordset);
+        else
+            res.json({message: "Updated Store Manager"});
 
     } catch (err){
         console.log(err);
