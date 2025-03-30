@@ -1322,6 +1322,219 @@ app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
     }
 });
 
+
+// UpdateManagers
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+const email = "user@example.com";
+if (isValidEmail(email)) {
+    console.log("Valid email.");
+} else {
+    console.log("Invalid email.");
+}
+
+app.put("/manager/ChangeEmail/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "email";
+        const pool = await sql.connect(config);
+
+        if (!isValidEmail(NewVal)) {
+            return res.status(400).json({ error: "Invalid email format." });
+        }
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "Email updated successfully." });
+        } else {
+            res.status(200).json({ message: "email not changed(Already the same)" });    // could use 204 but I didn't
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+app.put("/manager/ChangeUserName/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "username";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "User Name updated successfully." });
+        } else {
+            res.status(200).json({ message: "User Name not changed(Already the same)" });
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+app.put("/manager/ChangePassword/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "password";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "Password updated successfully." });
+        } else {
+            res.status(200).json({ message: "Password not changed(Already the same)" });
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+
+app.put("/manager/ChangePassword/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "password";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "Password updated successfully." });
+        } else {
+            res.status(200).json({ message: "Password not changed(Already the same)" });
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+//Not allowing buisnessID change from Mangager's view assuming only owner can reallocate managers to another buisness
+
+//UpdateStores
+
+// For all columns except managerID
+app.put("/UpdateStores/:columnName/:NewVal",auth_both, async(req,res)=>{
+    try{
+        const {columnName,NewVal} = req.params;
+        const StoreID = req.user.user_id;
+        const allowedColumns = ["StoreName", "Address","PhoneNumber"]; //Define allowed columns
+        if (!allowedColumns.includes(columnName)) {
+            return res.status(400).json({ error: "Invalid column name." });
+        }
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, columnName) 
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("StoreID", sql.Int, StoreID)
+        .execute("UpdateStores"); 
+        
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: `${columnName} updated successfully.` });
+        } else {
+            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
+        }
+        
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// For changing managerID only
+app.put("/UpdateStores/:NewVal",auth_owner, async(req,res)=>{
+    try{
+        const StoreID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "StoreName";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("StoreID", sql.Int, StoreID)
+        .execute("UpdateStores"); 
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "ManagerID updated successfully." });
+        } else {
+            res.status(200).json({ message: "ManagerID not changed(Already the same)" });
+        }
+
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+}
+);
+
+
+//UpdateStockRequests
+
+app.put("/UpdateStockRequests/:columnName/:NewVal",auth_both, async(req,res)=>{
+    try{
+        const {columnName,NewVal} = req.params;
+        const allowedColumns = ["RequestedQuantity","ReqStatus","approvedby","fullfillmentdate"]; //Define allowed columns
+        if (!allowedColumns.includes(columnName)) {
+            return res.status(400).json({ error: "Invalid column name." });
+        }
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, columnName) 
+        .input("NewVal", sql.VarChar, NewVal)
+        .execute("UpdateStockRequests"); 
+        
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: `${columnName} updated successfully.` });
+        } else {
+            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
+        }
+        
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+//UpdateNotificationType Not needed
+
+//UpdateReadStatus not needed
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
