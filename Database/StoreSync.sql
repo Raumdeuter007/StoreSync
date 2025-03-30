@@ -1169,7 +1169,7 @@ GO
 CREATE PROCEDURE stockRequestsOfStore @StoreID INT
 AS
 BEGIN
-     SELECT RequestingStoreID, ProductID, RequestedQuantity, ReqStatus, request_date, approvedby, fullfillmentdate
+     SELECT RequestID, RequestingStoreID, ProductID, RequestedQuantity, ReqStatus, request_date, approvedby, fullfillmentdate
      FROM StockRequests
      WHERE RequestingStoreID = @StoreID; 
 END;
@@ -1191,7 +1191,7 @@ GO
 CREATE PROCEDURE StockRequestsForOwner @OwnerID INT
 AS
 BEGIN
-    SELECT SR.RequestingStoreID, SR.ProductID, SR.RequestedQuantity, SR.ReqStatus, 
+    SELECT RequestID, SR.RequestingStoreID, SR.ProductID, SR.RequestedQuantity, SR.ReqStatus, 
 		SR.request_date, SR.approvedby, SR.fullfillmentdate
     FROM StockRequests SR JOIN Stores S ON SR.RequestingStoreID = S.StoreID
     JOIN Business B ON S.BusinessID = B.BusinessID
