@@ -5,6 +5,7 @@ const cors = require('cors');
 const session = require("express-session");
 const passport = require('passport');
 const { Strategy } = require('passport-local');
+const helper = require("./helper.js");
 
 const config = {
     connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.DB_SERVER};
@@ -18,11 +19,11 @@ passport.use('owner',
             const pool = await sql.connect(config);
             let result = await pool.request()
                 .input("username", username)
-                .input("password", password)
-                .execute("VerifyOwnerLogin");
-            
-            console.log(result);
+                .query("SELECT * FROM Owners WHERE username = @username");
+        
             if (result.recordsets.length === 0)
+                done(null, false);  
+            else if (!await helper.comparePassword(password, result.recordset[0].password)) 
                 done(null, false);  
             else {
                 const dict = {
@@ -45,9 +46,13 @@ passport.use('manager',
         {
             const pool = await sql.connect(config);
             let result = await pool.request()
-            .input("username", username)
-            .input("password", password)
-            .execute("VerifyManagerLogin");
+                .input("username", username)
+                .query("SELECT * FROM Managers WHERE username = @username");
+        
+            if (result.recordsets.length === 0)
+                done(null, false);  
+            else if (!await helper.comparePassword(password, result.recordset[0].password)) 
+                done(null, false); 
 
             console.log(result);
             if (result.recordsets.length === 0)
@@ -177,11 +182,12 @@ app.post("/owner/register", reg_bus, async (req, res) => {
     const {name, email, username, password, business, address} = req.body;
     try {
         const pool = await sql.connect(config);
+        const hashed = await helper.hashPassword(password);
         await pool.request()
         .input("O_name", name)
         .input("O_email", email)
         .input("O_username", username)
-        .input("O_password", password)
+        .input("O_password", hashed)
         .input("BusinessName", business)
         .input("HQAddress", address)
         .execute("insert_OwnersAndBusiness");
