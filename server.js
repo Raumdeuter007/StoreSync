@@ -5,6 +5,7 @@ const cors = require('cors');
 const session = require("express-session");
 const passport = require('passport');
 const { Strategy } = require('passport-local');
+const helper = require("./helper.js");
 
 const config = {
     connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.DB_SERVER};
@@ -18,11 +19,11 @@ passport.use('owner',
             const pool = await sql.connect(config);
             let result = await pool.request()
                 .input("username", username)
-                .input("password", password)
-                .execute("VerifyOwnerLogin");
-            
-            console.log(result);
+                .query("SELECT * FROM Owners WHERE username = @username");
+        
             if (result.recordsets.length === 0)
+                done(null, false);  
+            else if (!await helper.comparePassword(password, result.recordset[0].password)) 
                 done(null, false);  
             else {
                 const dict = {
@@ -45,11 +46,15 @@ passport.use('manager',
         {
             const pool = await sql.connect(config);
             let result = await pool.request()
-            .input("username", username)
-            .input("password", password)
-            .execute("VerifyManagerLogin");
+                .input("username", username)
+                .query("SELECT * FROM Managers WHERE username = @username");
+        
+            if (result.recordsets.length === 0)
+                done(null, false);  
+            else if (!await helper.comparePassword(password, result.recordset[0].password)) 
+                done(null, false); 
 
-            console.log(result);
+            // console.log(result);
             if (result.recordsets.length === 0)
                 done(null, false);  
             else {
@@ -177,11 +182,12 @@ app.post("/owner/register", reg_bus, async (req, res) => {
     const {name, email, username, password, business, address} = req.body;
     try {
         const pool = await sql.connect(config);
+        const hashed = await helper.hashPassword(password);
         await pool.request()
         .input("O_name", name)
         .input("O_email", email)
         .input("O_username", username)
-        .input("O_password", password)
+        .input("O_password", hashed)
         .input("BusinessName", business)
         .input("HQAddress", address)
         .execute("insert_OwnersAndBusiness");
@@ -1309,6 +1315,256 @@ app.put("/owner/readNotification/:id", auth_owner, async(req,res) => {
             result.recordset[0]["message"] = "Could not update read status";
 
         res.json(result.recordset);
+
+    } catch (err){
+        console.log(err);
+        res.status(500).json({err});
+    }
+});
+
+
+// UpdateManagers
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+const email = "user@example.com";
+if (isValidEmail(email)) {
+    console.log("Valid email.");
+} else {
+    console.log("Invalid email.");
+}
+
+app.put("/manager/ChangeEmail/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "email";
+        const pool = await sql.connect(config);
+
+        if (!isValidEmail(NewVal)) {
+            return res.status(400).json({ error: "Invalid email format." });
+        }
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "Email updated successfully." });
+        } else {
+            res.status(200).json({ message: "email not changed(Already the same)" });    // could use 204 but I didn't
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+app.put("/manager/ChangeUserName/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "username";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "User Name updated successfully." });
+        } else {
+            res.status(200).json({ message: "User Name not changed(Already the same)" });
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+app.put("/manager/ChangePassword/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "password";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "Password updated successfully." });
+        } else {
+            res.status(200).json({ message: "Password not changed(Already the same)" });
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+
+app.put("/manager/ChangePassword/:NewVal", auth_man, async(req,res)=>{
+    try{
+        const ManagerID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "password";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("ManagerID", sql.Int, ManagerID)
+        .execute("UpdateManagers");
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "Password updated successfully." });
+        } else {
+            res.status(200).json({ message: "Password not changed(Already the same)" });
+        }
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+});
+
+//Not allowing buisnessID change from Mangager's view assuming only owner can reallocate managers to another buisness
+
+//UpdateStores
+
+// For all columns except managerID
+app.put("/UpdateStores/:columnName/:NewVal",auth_both, async(req,res)=>{
+    try{
+        const {columnName,NewVal} = req.params;
+        const StoreID = req.user.user_id;
+        const allowedColumns = ["StoreName", "Address","PhoneNumber"]; //Define allowed columns
+        if (!allowedColumns.includes(columnName)) {
+            return res.status(400).json({ error: "Invalid column name." });
+        }
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, columnName) 
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("StoreID", sql.Int, StoreID)
+        .execute("UpdateStores"); 
+        
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: `${columnName} updated successfully.` });
+        } else {
+            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
+        }
+        
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// For changing managerID only
+app.put("/UpdateStores/:NewVal",auth_owner, async(req,res)=>{
+    try{
+        const StoreID = req.user.user_id;
+        const {NewVal} = req.params;
+        const ColumnName = "StoreName";
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, ColumnName)
+        .input("NewVal", sql.VarChar, NewVal)
+        .input("StoreID", sql.Int, StoreID)
+        .execute("UpdateStores"); 
+
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "ManagerID updated successfully." });
+        } else {
+            res.status(200).json({ message: "ManagerID not changed(Already the same)" });
+        }
+
+
+    } catch (err){
+        res.status(500).json({error: err.message});
+    }
+}
+);
+
+
+//UpdateStockRequests
+
+app.put("/UpdateStockRequests/:columnName/:NewVal",auth_both, async(req,res)=>{
+    try{
+        const {columnName,NewVal} = req.params;
+        const allowedColumns = ["RequestedQuantity","ReqStatus","approvedby","fullfillmentdate"]; //Define allowed columns
+        if (!allowedColumns.includes(columnName)) {
+            return res.status(400).json({ error: "Invalid column name." });
+        }
+        const pool = await sql.connect(config);
+
+        const result = await pool
+        .request()
+        .input("ColumnName", sql.VarChar, columnName) 
+        .input("NewVal", sql.VarChar, NewVal)
+        .execute("UpdateStockRequests"); 
+        
+        if (result.rowsAffected && result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: `${columnName} updated successfully.` });
+        } else {
+            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
+        }
+        
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+//UpdateNotificationType Not needed
+
+//UpdateReadStatus not needed
+
+app.put("/owner/sto_manager/:Sid/:Mid", auth_owner, async (req, res) => {
+    try{
+        const { Sid, Mid } = req.params;
+        const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("id", req.user.user_id)
+        .input("Mid", Mid)
+        .query("SELECT * FROM Managers WHERE businessID = @id AND managerID = @Mid");
+        if (mans.recordset.length === 0)
+            throw "Manager Not found in the business";
+
+        const stores = await pool.request()
+        .input("id", req.user.user_id)
+        .input("Sid", Sid)
+        .query("SELECT * FROM Stores WHERE businessID = @id AND StoreID = @Sid");
+
+        if (stores.recordset.length === 0)
+            throw "Store Not found in the business";
+        
+        const result = await pool
+        .request()
+        .input("ManagerID", sql.Int, Mid)
+        .input("StoreId", sql.Int, Sid)
+        .execute("update_manager");
+        
+        console.log(result);
+        if (result.recordset)
+            res.json(result.recordset);
+        else
+            res.json({message: "Updated Store Manager"});
 
     } catch (err){
         console.log(err);
