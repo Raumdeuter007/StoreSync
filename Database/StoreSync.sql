@@ -1399,6 +1399,70 @@ END
 -- TODO: SELECTION QUERIES FOR FOLLOWING:
 --Same for month, Quarter(current, previous,Q1,Q2,Q3,Q4, comparision b/w Quarters)
 
+GO
+CREATE PROCEDURE CompletedReqsInQuarter (
+@ManagerID INT, @Quarter INT)
+AS
+BEGIN
+	DECLARE @StatusIDCompleted INT = (SELECT StatusID FROM RequestStatus WHERE StatusName = 'Completed')   --map 'completed' to corrospomding status id to cmp with  ASR.ReqStatus
+
+	SELECT RequestID, RequestingStoreID, StoreName, ProductID, ProductName,
+		RequestedQuantity, ReqStatus, fullfillmentdate, request_date
+	FROM AStockReqs AS ASR
+	WHERE ASR.ReqStatus = @StatusIDCompleted AND 
+	ASR.ManagerID = @ManagerID AND DATEPART(QUARTER, ASR.fullfillmentdate) = @Quarter
+	AND YEAR(ASR.fullfillmentdate) = YEAR(GETDATE())  --current year
+END
+
+GO
+CREATE PROCEDURE PerformanceCompAcrossQuarters (
+	@managerId INT
+)
+AS
+BEGIN
+	DECLARE @StatusIDCompleted INT;
+	
+	SELECT @StatusIDCompleted = StatusID FROM RequestStatus WHERE StatusName = 'Completed';
+	
+	WITH QuarterPerformance AS
+	(
+		SELECT 
+			DATEPART(QUARTER, ASR.fullfillmentdate) AS Quarter,
+			COUNT(ASR.RequestID) AS TotalRequests,
+			SUM(CASE WHEN ASR.ReqStatus = @StatusIDCompleted THEN 1 ELSE 0 END) AS CompletedRequests
+		FROM AStockReqs AS ASR
+		WHERE ASR.ManagerID = @managerId
+		GROUP BY DATEPART(QUARTER, ASR.fullfillmentdate)
+	),
+	QuarterComparison AS
+	(
+		SELECT 
+			Quarter,
+			TotalRequests,
+			CompletedRequests,
+			LAG(CompletedRequests, 1, NULL) OVER (ORDER BY Quarter) AS PrevCompletedRequests,
+			LEAD(CompletedRequests, 1, NULL) OVER (ORDER BY Quarter) AS NextCompletedRequests
+		FROM QuarterPerformance
+	)
+	SELECT 
+		Quarter,
+		TotalRequests,
+		CompletedRequests,
+		PrevCompletedRequests,
+		CASE 
+			WHEN PrevCompletedRequests IS NULL OR PrevCompletedRequests = 0 THEN NULL
+			ELSE CAST((CompletedRequests - PrevCompletedRequests) * 100.0 / PrevCompletedRequests AS DECIMAL(10,2))
+		END AS PercentChangeFromPreviousQuarter,
+		NextCompletedRequests,
+		CASE 
+			WHEN CompletedRequests = 0 OR NextCompletedRequests IS NULL THEN NULL
+			ELSE CAST((NextCompletedRequests - CompletedRequests) * 100.0 / CompletedRequests AS DECIMAL(10,2))
+		END AS PercentChangeToNextQuarter
+	FROM QuarterComparison
+	ORDER BY Quarter;
+END
+GO
+
 -- WILL CHECK THESE 2 LATER
 -- 17. Get the total number of stock requests made by a specific store in the last month
 GO
