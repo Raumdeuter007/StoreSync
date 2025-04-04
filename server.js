@@ -21,16 +21,16 @@ passport.use('owner',
                 .input("username", username)
                 .query("SELECT * FROM Owners WHERE username = @username");
         
-            if (result.recordsets.length === 0)
-                done(null, false);  
+            if (result.recordset.length === 0)
+                return done(null, false);  
             else if (!await helper.comparePassword(password, result.recordset[0].password)) 
-                done(null, false);  
+                return done(null, false);  
             else {
                 const dict = {
                     user_id: result.recordset[0].ownerID, 
                     role: 'owner',        
                 };
-                done(null, dict);
+                return done(null, dict);
             }         
         }
         catch (err)
@@ -49,9 +49,9 @@ passport.use('manager',
                 .input("username", username)
                 .query("SELECT * FROM Managers WHERE username = @username");
         
-            if (result.recordsets.length === 0)
+            if (result.recordset.length === 0)
                 done(null, false);  
-            else if (!await helper.comparePassword(password, result.recordset[0].password)) 
+            if (!await helper.comparePassword(password, result.recordset[0].password)) 
                 done(null, false); 
 
             // console.log(result);
@@ -556,7 +556,7 @@ app.delete("/stock_req/:id", auth_both, async (req, res) =>
 
             let flag = false;
             for (let i = 0; !flag && i < reqs.recordset.length; i++) {
-                if (mans.recordset[i].RequestID === Number(id)) {
+                if (reqs.recordset[i].RequestID === Number(id)) {
                     flag = true;
                 }
             }
@@ -603,8 +603,9 @@ app.delete("/owner/sto_manager/:id", auth_owner, async (req, res) =>
             throw "Manager is not included in the business";
             
         const record = await pool.request()
-        .input("ManagerID", id)
-        .execute("delete_manager_withNoAssignedStore");
+        .input("id", id)
+        .query("UPDATE Stores SET ManagerID = NULL WHERE ManagerID = @id");
+        console.log(record)
         if (record.rowsAffected[0] === 0)
             res.status(404).json({ message: "Manager Not found"});
         else
@@ -644,19 +645,16 @@ const login_auth = express.urlencoded({
 
 app.post("/owner/login", login_auth, passport.authenticate("owner"), (req, res) =>
 {
-    res.status(200).json({message: "You are connected"});
+    if (!res.headersSent)
+        res.status(200).json({message: "You are connected"});
 });
 
 app.post("/manager/login", login_auth, passport.authenticate("manager"), (req, res) =>
 {
-    res.status(200).json({message: "You are connected"});
+    if (!res.headersSent)
+        res.status(200).json({message: "You are connected"});
 });
 
-const get_req = express.urlencoded({ 
-    extended : false,
-    limit: 10000,
-    parameterLimit: 1
-});
 
 app.post("/logout", auth_both, (req, res) => {
     console.log(req.session);
@@ -1328,12 +1326,17 @@ function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 }
+const email_req = express.urlencoded({ 
+    extended : false,
+    limit: 10000,
+    parameterLimit: 1
+});
 
-app.put("/manager/ChangeEmail/:NewVal", auth_man, async (req, res) => {
+app.put("/manager/ChangeEmail", email_req, auth_man, async (req, res) => {
     try 
     {
         const ManagerID = req.user.user_id;
-        const {NewVal} = req.params;
+        const {NewVal} = req.body;
         const ColumnName = "email";
         if (!isValidEmail(NewVal)) {
             return res.status(400).json({ error: "Invalid email format." });
@@ -1419,93 +1422,268 @@ app.put("/manager/ChangeEmail/:NewVal", auth_man, async (req, res) => {
 //UpdateStores
 
 // For all columns except managerID
-app.put("/UpdateStores/:columnName/:NewVal",auth_both, async(req,res)=>{
-    try{
-        const {columnName,NewVal} = req.params;
-        const StoreID = req.user.user_id;
-        const allowedColumns = ["StoreName", "Address","PhoneNumber"]; //Define allowed columns
+app.put("/owner/UpdateStores/:Sid/:columnName/:NewVal", auth_owner, async(req,res)=>{
+    try {
+        const {Sid, columnName, NewVal} = req.params;
+        const allowedColumns = ["StoreName", "Address"]; //Define allowed columns
         if (!allowedColumns.includes(columnName)) {
             return res.status(400).json({ error: "Invalid column name." });
         }
         const pool = await sql.connect(config);
 
+        const stores = await pool.request()
+        .input("id", req.user.user_id)
+        .input("Sid", Sid)
+        .query("SELECT * FROM Stores WHERE businessID = @id AND StoreID = @Sid");
+
+        if (stores.recordset.length === 0)
+            throw "Store Not found in the business";
+
         const result = await pool
         .request()
         .input("ColumnName", sql.VarChar, columnName) 
         .input("NewVal", sql.VarChar, NewVal)
-        .input("StoreID", sql.Int, StoreID)
+        .input("StoreID", sql.Int, Sid)
         .execute("UpdateStores"); 
         
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: `${columnName} updated successfully.` });
-        } else {
-            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
-        }
+        if (result.recordset[0]["RetCode"] === 0)
+            result.recordset[0]["message"] = `Successfully updated ${columnName}`;
+        else
+            result.recordset[0]["message"] = `Could not update ${columnName}`;
+
+        res.json(result.recordset);
         
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ err });
     }
 });
 
-
-// For changing managerID only
-// app.put("/UpdateStores/:NewVal",auth_owner, async (req, res) => {
-//     try {
-//         const StoreID = req.user.user_id;
-//         const {NewVal} = req.params;
-//         const ColumnName = "StoreName";
-//         const pool = await sql.connect(config);
-
-//         const result = await pool
-//         .request()
-//         .input("ColumnName", sql.VarChar, ColumnName)
-//         .input("NewVal", sql.VarChar, NewVal)
-//         .input("StoreID", sql.Int, StoreID)
-//         .execute("UpdateStores"); 
-
-//         if (result.rowsAffected && result.rowsAffected[0] > 0) {
-//             res.status(200).json({ message: "ManagerID updated successfully." });
-//         } else {
-//             res.status(200).json({ message: "ManagerID not changed(Already the same)" });
-//         }
-
-
-//     } catch (err){
-//         res.status(500).json({error: err.message});
-//     }
-// }
-// );
-
-
 //Update Quantity
 
-app.put("/UpdateQuantity/:Sid/:NewVal", auth_both, async(req, res) => {
+app.put("/UpdateQuantity/:SRid/:NewVal", auth_both, async(req, res) => {
     try {
-        const { Sid, NewVal } = req.params;
+        const { SRid, NewVal } = req.params;
         const columnName = "RequestedQuantity";
         
         const pool = await sql.connect(config);
+        if (req.user.role === 'owner')
+        {
+            const mans = await pool.request()
+            .input("OwnerID", req.user.user_id)
+            .execute("StockRequestsForOwner");
+    
+            if (mans.recordset.length === 0)
+                throw "Stock Request not found for the owner";
 
+            let flag = false;
+            for (let i = 0; !flag && i < mans.recordset.length; i++)
+            {
+                if (mans.recordset[i].RequestID === Number(SRid))
+                {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Stock Request not included in the business";
+        }
+        else {
+            const store = await pool.request()
+            .input("ManagerID", req.user.user_id)
+            .execute("StoreDetailsOfManagers");
+
+            if (store.recordset.length === 0)
+                throw "Manager has not been assigned a store";
+            
+            const reqs = await pool.request()
+            .input("id", store.recordset[0].StoreID)
+            .query("SELECT * FROM StockRequests WHERE RequestingStoreID = @id");
+            
+            if (reqs.recordset.length === 0)
+                throw "No stock requests for the store";
+
+            let flag = false;
+            for (let i = 0; !flag && i < reqs.recordset.length; i++) {
+                if (reqs.recordset[i].RequestID === Number(SRid) && reqs.recordset[i].ReqStatus === 1) {
+                    flag = true;
+                }
+            }
+            if (!flag)
+                throw "Stock Request not included in the business";
+        }
         const result = await pool
         .request()
+        .input("RequestID", SRid)
         .input("ColumnName", sql.VarChar, columnName) 
         .input("NewVal", sql.VarChar, NewVal)
         .execute("UpdateStockRequests"); 
         
-        if (result.rowsAffected && result.rowsAffected[0] > 0) {
-            res.status(200).json({ message: `${columnName} updated successfully.` });
-        } else {
-            res.status(200).json({ message: `${columnName} not changed (Already the same).` });
-        }
+        if (result.recordset[0]["RetCode"] === 0)
+            result.recordset[0]["message"] = `Successfully updated ${columnName} in Stock Request`;
+        else
+            result.recordset[0]["message"] = `Could not update ${columnName} in Stock Request`;
+
+        res.json(result.recordset);
         
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.log(err);
+        res.status(500).json({ err });
     }
 });
 
-//UpdateNotificationType Not needed
+app.put("/owner/approve_req/:SRid", auth_owner, async (req, res) => {
+    try {
+        const { SRid } = req.params;
+        const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("OwnerID", req.user.user_id)
+        .execute("StockRequestsForOwner");
+    
+        if (mans.recordset.length === 0)
+            throw "Stock Request not found for the owner";
+    
+        let flag = false;
+        for (let i = 0; !flag && i < mans.recordset.length; i++)
+        {
+            if (mans.recordset[i].RequestID === Number(SRid) && mans.recordset[i].ReqStatus === 1)
+            {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Stock Request not included in the business";
+    
+        await pool
+        .request()
+        .input("RequestID", SRid)
+        .input("ColumnName", sql.VarChar, "ReqStatus") 
+        .input("NewVal", sql.VarChar, 2)
+        .execute("UpdateStockRequests"); 
 
-//UpdateReadStatus not needed
+        const result = await pool
+        .request()
+        .input("RequestID", SRid)
+        .input("ColumnName", sql.VarChar, "approvedby") 
+        .input("NewVal", sql.VarChar, req.user.user_id)
+        .execute("UpdateStockRequests"); 
+        
+        if (result.recordset[0]["RetCode"] === 0)
+            result.recordset[0]["message"] = `Successfully approved Stock Request`;
+        else
+            result.recordset[0]["message"] = `Could not approve Stock Request`;
+    
+        res.json(result.recordset);
+
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json({ err });
+    }
+});
+
+app.put("/owner/decline_req/:SRid", auth_owner, async (req, res) => {
+    try {
+        const { SRid } = req.params;
+
+        const pool = await sql.connect(config);
+        const mans = await pool.request()
+        .input("OwnerID", req.user.user_id)
+        .execute("StockRequestsForOwner");
+    
+        if (mans.recordset.length === 0)
+            throw "Stock Request not found for the owner";
+    
+        let flag = false;
+        for (let i = 0; !flag && i < mans.recordset.length; i++)
+        {
+            if (mans.recordset[i].RequestID === Number(SRid) && mans.recordset[i].ReqStatus === 1)
+            {
+                flag = true;
+            }
+        }
+        if (!flag)
+            throw "Stock Request not included in the business";
+    
+        const result = await pool
+        .request()
+        .input("RequestID", SRid)
+        .input("ColumnName", sql.VarChar, "ReqStatus") 
+        .input("NewVal", sql.VarChar, 2)
+        .execute("UpdateStockRequests"); 
+        
+        if (result.recordset[0]["RetCode"] === 0)
+            result.recordset[0]["message"] = `Successfully updated ${columnName} in Stock Request`;
+        else
+            result.recordset[0]["message"] = `Could not update ${columnName} in Stock Request`;
+    
+        res.json(result.recordset);
+
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json({ err });
+    }
+});
+
+app.put("/manager/complete_req/:SRid", auth_man, async (req, res) => {
+    try {
+        const { SRid } = req.params;
+        
+        const pool = await sql.connect(config);
+        const store = await pool.request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Stores WHERE ManagerID = @id");
+
+        if (store.recordset.length === 0)
+            throw "No stores found";
+
+        const mans = await pool.request()
+        .input("StoreID", store.recordset[0].StoreID)
+        .execute("stockRequestsOfStore");
+    
+        if (mans.recordset.length === 0)
+            throw "Stock Request not found for the manager";
+    
+        let flag = false;
+        let num = -1;
+        for (let i = 0; !flag && i < mans.recordset.length; i++)
+        {
+            if (mans.recordset[i].RequestID === Number(SRid) && mans.recordset[i].ReqStatus === 2)
+            {
+                flag = true;
+                num = i;
+            }
+        }
+        if (!flag)
+            throw "Stock Request not yet approved or is completed";
+    
+        await pool
+        .request()
+        .input("RequestID", SRid)
+        .input("ColumnName", sql.VarChar, "ReqStatus") 
+        .input("NewVal", sql.VarChar, "5")
+        .execute("UpdateStockRequests");
+        
+        await pool
+        .request()
+        .input("RequestID", SRid)
+        .input("NewVal", sql.VarChar, new Date().toISOString().slice(0, 19).replace('T', ' '))
+        .query("UPDATE StockRequests SET fullfillmentdate = @NewVal WHERE RequestID = @RequestID"); 
+        
+        await pool
+        .request()
+        .input("WarehouseID", sql.VarChar, mans.recordset[num].RequestingStoreID)
+        .input("ProductID", sql.VarChar, mans.recordset[num].ProductID) 
+        .input("stockQuantity", sql.VarChar,  mans.recordset[num].RequestedQuantity)
+        .execute("insert_ProductinWarehouse");
+
+        res.json({ message: "Successfully added Product to Warehouse."});
+
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json({ err });
+    }
+});
 
 app.put("/owner/sto_manager/:Sid/:Mid", auth_owner, async (req, res) => {
     try{
@@ -1532,7 +1710,6 @@ app.put("/owner/sto_manager/:Sid/:Mid", auth_owner, async (req, res) => {
         .input("StoreId", sql.Int, Sid)
         .execute("update_manager");
         
-        console.log(result);
         if (result.recordset)
             res.json(result.recordset);
         else
