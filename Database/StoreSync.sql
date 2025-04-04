@@ -63,9 +63,12 @@ CREATE TABLE Stores(
 	StoreName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
 	StoreAddress VARCHAR(255) NOT NULL UNIQUE,
-	ManagerID INT UNIQUE 	
+	ManagerID INT
 );
 ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
+CREATE UNIQUE NONCLUSTERED INDEX idx_unique_man
+ON Stores(ManagerID)
+WHERE ManagerID IS NOT NULL;
 
 /* Inventory Management */
 
@@ -256,22 +259,24 @@ END;
 
 -- 5. Insert Product in a Warehouse
 GO
+
 CREATE PROCEDURE insert_ProductinWarehouse  
 	@warehouseID INT,
-	@ProductID INT
+	@ProductID INT,
+	@stockQuantity INT
 AS
 BEGIN 
      -- if the product detail does not already exist
-     --IF NOT EXISTS (SELECT 1
-	    --            FROM Inventory WHERE warehouseID = @warehouseID AND ProductID = @ProductID)	
-	INSERT INTO Inventory (warehouseID, ProductID)
-        VALUES (@warehouseID, @ProductID);
+     IF NOT EXISTS (SELECT 1
+	                FROM Inventory WHERE warehouseID = @warehouseID AND ProductID = @ProductID)	
+	INSERT INTO Inventory (warehouseID, ProductID, stockQuantity)
+        VALUES (@warehouseID, @ProductID, @stockQuantity);
 
-  --   ELSE
-  --    -- if the product already exists in inventory only update the stock quantity
-	 --UPDATE Inventory
-	 --SET stockQuantity = stockQuantity + @stockQuantity
-	 --WHERE warehouseID = @warehouseID AND ProductID = @ProductID;
+     ELSE
+      -- if the product already exists in inventory only update the stock quantity
+	 UPDATE Inventory
+	 SET stockQuantity = stockQuantity + @stockQuantity
+	 WHERE warehouseID = @warehouseID AND ProductID = @ProductID;
 
 END;
 
@@ -608,7 +613,6 @@ GO
 --6. Update Inventory Details
 GO
 CREATE PROCEDURE UpdateInventory
-	@ColumnName VARCHAR(128),
 	@NewVal INT,
 	@WarehouseId INT,
 	@ProductId INT
@@ -620,7 +624,7 @@ BEGIN
 	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
 	BEGIN TRY
-		SET @SQL = 'UPDATE Inventory SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE warehouseID  = @WarehouseId AND ProductID = @ProductId';
+		SET @SQL = 'UPDATE Inventory SET stockQuantity += @NewVal WHERE warehouseID  = @WarehouseId AND ProductID = @ProductId';
 		EXEC sp_executesql @SQL, N'@NewVal INT, @WarehouseId INT, @ProductId INT', @NewVal, @WarehouseId, @ProductId;
 		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
 	END TRY
@@ -660,7 +664,6 @@ BEGIN
 END
 GO
 -- 8. Change store manager
-
 CREATE PROCEDURE update_manager @ManagerID INT, @StoreID INT
 AS
 BEGIN 
@@ -669,11 +672,13 @@ BEGIN
 		UPDATE Stores SET ManagerID = @ManagerID WHERE StoreID = @StoreID;
 	END;
 	ELSE
+	BEGIN
 		DECLARE @RetCode INT = 0
 		DECLARE @ERRNO NVARCHAR(4000) = NULL;
 		SET @RetCode = -1;
 		SET @ERRNO = 'Can not assign store to the manager: Already assigned';
 		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END
 END;
 GO
 
@@ -1531,7 +1536,7 @@ AS
 BEGIN 
 
     IF (SELECT ReqStatus FROM StockRequests 
-	    WHERE RequestID = @RequestID ) = 'Pending'
+	    WHERE RequestID = @RequestID ) = 1 -- Pending
 		 
     BEGIN
         DELETE FROM StockRequests WHERE RequestID = @RequestID;
