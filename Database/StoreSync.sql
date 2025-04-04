@@ -63,9 +63,12 @@ CREATE TABLE Stores(
 	StoreName VARCHAR(255) NOT NULL,
 	BusinessID INT NOT NULL,
 	StoreAddress VARCHAR(255) NOT NULL UNIQUE,
-	ManagerID INT UNIQUE 	
+	ManagerID INT
 );
 ALTER TABLE Stores ADD CONSTRAINT PK_Stores PRIMARY KEY (StoreID);
+CREATE UNIQUE NONCLUSTERED INDEX idx_unique_man
+ON Stores(ManagerID)
+WHERE ManagerID IS NOT NULL;
 
 /* Inventory Management */
 
@@ -256,22 +259,24 @@ END;
 
 -- 5. Insert Product in a Warehouse
 GO
+
 CREATE PROCEDURE insert_ProductinWarehouse  
 	@warehouseID INT,
-	@ProductID INT
+	@ProductID INT,
+	@stockQuantity INT
 AS
 BEGIN 
      -- if the product detail does not already exist
-     --IF NOT EXISTS (SELECT 1
-	    --            FROM Inventory WHERE warehouseID = @warehouseID AND ProductID = @ProductID)	
-	INSERT INTO Inventory (warehouseID, ProductID)
-        VALUES (@warehouseID, @ProductID);
+     IF NOT EXISTS (SELECT 1
+	                FROM Inventory WHERE warehouseID = @warehouseID AND ProductID = @ProductID)	
+	INSERT INTO Inventory (warehouseID, ProductID, stockQuantity)
+        VALUES (@warehouseID, @ProductID, @stockQuantity);
 
-  --   ELSE
-  --    -- if the product already exists in inventory only update the stock quantity
-	 --UPDATE Inventory
-	 --SET stockQuantity = stockQuantity + @stockQuantity
-	 --WHERE warehouseID = @warehouseID AND ProductID = @ProductID;
+     ELSE
+      -- if the product already exists in inventory only update the stock quantity
+	 UPDATE Inventory
+	 SET stockQuantity = stockQuantity + @stockQuantity
+	 WHERE warehouseID = @warehouseID AND ProductID = @ProductID;
 
 END;
 
@@ -415,125 +420,97 @@ GO
 
 ---- 2. Update Manager Details
 --GO
---CREATE PROCEDURE UpdateManagers
---    @ColumnName VARCHAR(128),
---    @NewVal VARCHAR(255), -- Most columns are VARCHAR(255), INT handled below
---    @ManagerId INT
---AS
---BEGIN
---    SET NOCOUNT ON;
---    DECLARE @SQL NVARCHAR(MAX)
---	DECLARE @RetCode INT = 0
---	DECLARE @ERRNO NVARCHAR(4000) = NULL;
+CREATE PROCEDURE UpdateManagers
+    @ColumnName VARCHAR(128),
+    @NewVal VARCHAR(255), -- Most columns are VARCHAR(255), INT handled below
+    @ManagerId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @RetCode INT = 0
+	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
---    IF @ColumnName IS NULL OR @ManagerId IS NULL OR (@NewVal IS NULL AND @ColumnName != 'assignedStore')
---    BEGIN
---        SET @RetCode = -1; 
---		SET @ERRNO = 'NULL_PARAM';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---		RETURN;
---    END
+    IF @ColumnName IS NULL OR @ManagerId IS NULL OR @NewVal IS NULL 
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'NULL_PARAM';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+		RETURN;
+    END
 
---    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Managers') AND name = @ColumnName)
---    BEGIN
---        SET @RetCode = -1; 
---		SET @ERRNO = 'INVALID_COLUMN: ' + @ColumnName;
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---		RETURN;
---    END
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Managers') AND name = @ColumnName)
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'INVALID_COLUMN: ' + @ColumnName;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+		RETURN;
+    END
 
---    IF @ColumnName = 'managerID'
---    BEGIN
---        SET @RetCode = -1; 
---		SET @ERRNO = 'IDENTITY_UPDATE: Cannot update managerID';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
---		RETURN;
---    END
+    IF @ColumnName = 'managerID'
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'IDENTITY_UPDATE: Cannot update managerID';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
 
---    IF @ColumnName = 'email' AND @NewVal NOT LIKE '%@%'
---    BEGIN
---        SET @RetCode = -1; 
---		SET @ERRNO = 'EMAIL_FORMAT: Email must contain @';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
---		RETURN;
---    END
+    IF @ColumnName = 'email' AND @NewVal NOT LIKE '%@%'
+    BEGIN
+        SET @RetCode = -1; 
+		SET @ERRNO = 'EMAIL_FORMAT: Email must contain @';
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
 
---    IF @ColumnName IN ('email', 'username') AND EXISTS 
---	(
---        SELECT 1 
---		FROM Managers 
---		WHERE (@ColumnName = 'email' AND email = @NewVal) OR (@ColumnName = 'username' AND username = @NewVal)  --Match duplicate email/username 
---        AND managerID != @ManagerId     -- But not with the column being updated itself
---	)
---    BEGIN
---        SET @RetCode = -1;
---		SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate ' + @ColumnName;
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
---		RETURN;
---    END
-
---    IF @ColumnName = 'assignedStore' AND @NewVal IS NOT NULL AND EXISTS
---	(
---		SELECT 1 FROM Managers 
---		WHERE assignedStore = 
---		CAST(@NewVal AS INT) AND managerID != @ManagerId
---	) 
---    BEGIN
---        SET @RetCode = -1; 
---		SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate assignedStore';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
---		RETURN;
---    END
+    IF @ColumnName IN ('email', 'username') AND EXISTS 
+	(
+        SELECT 1 
+		FROM Managers 
+		WHERE (@ColumnName = 'email' AND email = @NewVal) OR (@ColumnName = 'username' AND username = @NewVal)  --Match duplicate email/username 
+        AND managerID != @ManagerId     -- But not with the column being updated itself
+	)
+    BEGIN
+        SET @RetCode = -1;
+		SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate ' + @ColumnName;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
    
---    IF @ColumnName = 'businessID'
---	AND  NOT EXISTS 
---	(
---		 SELECT 1 
---		 FROM Business
---		 WHERE BusinessID = CAST(@NewVal AS INT) AND @ColumnName = 'businessID'
---	) 
---    BEGIN
---		SET @RetCode = -1;
---		SET @ERRNO = 'FK_VIOLATION: Invalid ' + 'businessID';
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---		RETURN;
---    END
+    IF @ColumnName = 'businessID'
+	AND  NOT EXISTS 
+	(
+		 SELECT 1 
+		 FROM Business
+		 WHERE BusinessID = CAST(@NewVal AS INT) AND @ColumnName = 'businessID'
+	) 
+    BEGIN
+		SET @RetCode = -1;
+		SET @ERRNO = 'FK_VIOLATION: Invalid ' + 'businessID';
+		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+		RETURN;
+    END
 
---	IF @ColumnName = 'assignedStore' AND @NewVal iS NOT NULL
---	AND NOT EXISTS
---	(
---		SELECT 1
---		FROM Stores
---		WHERE StoreID = @NewVal
---	)
---	BEGIN
---		SET @RetCode = -1; 
---		SET @ERRNO = 'FK_VIOLATION: Invalid ' + 'businessID';
---		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---		RETURN;
---    END
+    IF NOT EXISTS (SELECT 1 FROM Managers WHERE managerID = @ManagerId)
+    BEGIN
+        SET @RetCode = -1;
+		SET @ERRNO = 'NO_RECORD: ManagerID ' + CAST(@ManagerId AS VARCHAR(10));
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
+		RETURN;
+    END
 
-
---    IF NOT EXISTS (SELECT 1 FROM Managers WHERE managerID = @ManagerId)
---    BEGIN
---        SET @RetCode = -1;
---		SET @ERRNO = 'NO_RECORD: ManagerID ' + CAST(@ManagerId AS VARCHAR(10));
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO; 
---		RETURN;
---    END
-
---    BEGIN TRY
---        SET @SQL = 'UPDATE Managers SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE managerID = @ManagerId';
---        EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @ManagerId INT', @NewVal, @ManagerId;
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---    END TRY
---    BEGIN CATCH
---        SET @RetCode = -1;
---        SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---    END CATCH
---END;
---GO
+    BEGIN TRY
+        SET @SQL = 'UPDATE Managers SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE managerID = @ManagerId';
+        EXEC sp_executesql @SQL, N'@NewVal VARCHAR(255), @ManagerId INT', @NewVal, @ManagerId;
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+    END TRY
+    BEGIN CATCH
+        SET @RetCode = -1;
+        SET @ERRNO = 'ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+    END CATCH
+END;
+GO
 
 --Select * from Managers
 
@@ -636,7 +613,6 @@ GO
 --6. Update Inventory Details
 GO
 CREATE PROCEDURE UpdateInventory
-	@ColumnName VARCHAR(128),
 	@NewVal INT,
 	@WarehouseId INT,
 	@ProductId INT
@@ -648,7 +624,7 @@ BEGIN
 	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
 	BEGIN TRY
-		SET @SQL = 'UPDATE Inventory SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE warehouseID  = @WarehouseId AND ProductID = @ProductId';
+		SET @SQL = 'UPDATE Inventory SET stockQuantity += @NewVal WHERE warehouseID  = @WarehouseId AND ProductID = @ProductId';
 		EXEC sp_executesql @SQL, N'@NewVal INT, @WarehouseId INT, @ProductId INT', @NewVal, @WarehouseId, @ProductId;
 		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
 	END TRY
@@ -666,9 +642,7 @@ GO
 CREATE PROCEDURE UpdateStockRequests
 	@ColumnName VARCHAR(128),
 	@NewVal INT,
-	@RequestingStoreId INT,
-	@ProductId INT,
-	@RequestDate DATETIME
+	@RequestId INT
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -677,8 +651,8 @@ BEGIN
 	DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
 	BEGIN TRY
-		SET @SQL = 'UPDATE StockRequests SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE RequestingStoreId  = @RequestingStoreId AND ProductID = @ProductId AND request_date = @RequestDate';
-		EXEC sp_executesql @SQL, N'@NewVal INT, @RequestingStoreId INT, @ProductId INT, @RequestDate DATETIME', @NewVal, @RequestingStoreId, @ProductId, @RequestDate;
+		SET @SQL = 'UPDATE StockRequests SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE RequestId  = @RequestId';
+		EXEC sp_executesql @SQL, N'@NewVal INT, @RequestId INT', @NewVal, @RequestId;
 		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
 	END TRY
 
@@ -690,7 +664,6 @@ BEGIN
 END
 GO
 -- 8. Change store manager
-
 CREATE PROCEDURE update_manager @ManagerID INT, @StoreID INT
 AS
 BEGIN 
@@ -699,11 +672,13 @@ BEGIN
 		UPDATE Stores SET ManagerID = @ManagerID WHERE StoreID = @StoreID;
 	END;
 	ELSE
+	BEGIN
 		DECLARE @RetCode INT = 0
 		DECLARE @ERRNO NVARCHAR(4000) = NULL;
 		SET @RetCode = -1;
 		SET @ERRNO = 'Can not assign store to the manager: Already assigned';
 		SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+	END
 END;
 GO
 
@@ -1424,6 +1399,70 @@ END
 -- TODO: SELECTION QUERIES FOR FOLLOWING:
 --Same for month, Quarter(current, previous,Q1,Q2,Q3,Q4, comparision b/w Quarters)
 
+GO
+CREATE PROCEDURE CompletedReqsInQuarter (
+@ManagerID INT, @Quarter INT)
+AS
+BEGIN
+	DECLARE @StatusIDCompleted INT = (SELECT StatusID FROM RequestStatus WHERE StatusName = 'Completed')   --map 'completed' to corrospomding status id to cmp with  ASR.ReqStatus
+
+	SELECT RequestID, RequestingStoreID, StoreName, ProductID, ProductName,
+		RequestedQuantity, ReqStatus, fullfillmentdate, request_date
+	FROM AStockReqs AS ASR
+	WHERE ASR.ReqStatus = @StatusIDCompleted AND 
+	ASR.ManagerID = @ManagerID AND DATEPART(QUARTER, ASR.fullfillmentdate) = @Quarter
+	AND YEAR(ASR.fullfillmentdate) = YEAR(GETDATE())  --current year
+END
+
+GO
+CREATE PROCEDURE PerformanceCompAcrossQuarters (
+	@managerId INT
+)
+AS
+BEGIN
+	DECLARE @StatusIDCompleted INT;
+	
+	SELECT @StatusIDCompleted = StatusID FROM RequestStatus WHERE StatusName = 'Completed';
+	
+	WITH QuarterPerformance AS
+	(
+		SELECT 
+			DATEPART(QUARTER, ASR.fullfillmentdate) AS Quarter,
+			COUNT(ASR.RequestID) AS TotalRequests,
+			SUM(CASE WHEN ASR.ReqStatus = @StatusIDCompleted THEN 1 ELSE 0 END) AS CompletedRequests
+		FROM AStockReqs AS ASR
+		WHERE ASR.ManagerID = @managerId
+		GROUP BY DATEPART(QUARTER, ASR.fullfillmentdate)
+	),
+	QuarterComparison AS
+	(
+		SELECT 
+			Quarter,
+			TotalRequests,
+			CompletedRequests,
+			LAG(CompletedRequests, 1, NULL) OVER (ORDER BY Quarter) AS PrevCompletedRequests,
+			LEAD(CompletedRequests, 1, NULL) OVER (ORDER BY Quarter) AS NextCompletedRequests
+		FROM QuarterPerformance
+	)
+	SELECT 
+		Quarter,
+		TotalRequests,
+		CompletedRequests,
+		PrevCompletedRequests,
+		CASE 
+			WHEN PrevCompletedRequests IS NULL OR PrevCompletedRequests = 0 THEN NULL
+			ELSE CAST((CompletedRequests - PrevCompletedRequests) * 100.0 / PrevCompletedRequests AS DECIMAL(10,2))
+		END AS PercentChangeFromPreviousQuarter,
+		NextCompletedRequests,
+		CASE 
+			WHEN CompletedRequests = 0 OR NextCompletedRequests IS NULL THEN NULL
+			ELSE CAST((NextCompletedRequests - CompletedRequests) * 100.0 / CompletedRequests AS DECIMAL(10,2))
+		END AS PercentChangeToNextQuarter
+	FROM QuarterComparison
+	ORDER BY Quarter;
+END
+GO
+
 -- WILL CHECK THESE 2 LATER
 -- 17. Get the total number of stock requests made by a specific store in the last month
 GO
@@ -1561,7 +1600,7 @@ AS
 BEGIN 
 
     IF (SELECT ReqStatus FROM StockRequests 
-	    WHERE RequestID = @RequestID ) = 'Pending'
+	    WHERE RequestID = @RequestID ) = 1 -- Pending
 		 
     BEGIN
         DELETE FROM StockRequests WHERE RequestID = @RequestID;
