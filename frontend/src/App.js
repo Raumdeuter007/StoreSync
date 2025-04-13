@@ -1,9 +1,11 @@
+// Importing necessary libraries and components
 import React, { useState } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/css/bootstrap.min.css'; // Importing Bootstrap for styling
 
-// Inline components representing pages
+// Inline components representing different pages of the application
 
+// Home component: Displays a welcome message
 const Home = () => (
   <div className="container mt-4">
     <h2>Welcome to StoreSync</h2>
@@ -11,16 +13,18 @@ const Home = () => (
   </div>
 );
 
+// Login component: Handles user login functionality
 const Login = ({ setUserRole }) => {
-  const [role, setRole] = useState('owner');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const navigate = useNavigate();
+  const [role, setRole] = useState('owner'); // State to track selected role (owner/manager)
+  const [username, setUsername] = useState(''); // State to track username input
+  const [password, setPassword] = useState(''); // State to track password input
+  const [message, setMessage] = useState(''); // State to display login messages
+  const navigate = useNavigate(); // Hook to programmatically navigate between routes
 
+  // Function to handle login form submission
   const handleLogin = async (e) => {
     e.preventDefault();
-    const endpoint = role === 'owner' ? '/owner/login' : '/manager/login';
+    const endpoint = role === 'owner' ? '/owner/login' : '/manager/login'; // Determine endpoint based on role
     try {
       const response = await fetch(`http://localhost:5000${endpoint}`, {
         method: 'POST',
@@ -30,8 +34,8 @@ const Login = ({ setUserRole }) => {
       });
       if (response.ok) {
         setMessage('Logged in successfully!');
-        setUserRole(role);
-        navigate(role === 'owner' ? '/owner' : '/manager');
+        setUserRole(role); // Set user role in parent component
+        navigate(role === 'owner' ? '/owner' : '/manager'); // Navigate to respective dashboard
       } else {
         setMessage('Login failed!');
       }
@@ -45,6 +49,7 @@ const Login = ({ setUserRole }) => {
     <div className="container mt-4">
       <h2>Login</h2>
       <form onSubmit={handleLogin}>
+        {/* Dropdown to select user role */}
         <div className="mb-3">
           <label className="form-label">Select Role:</label>
           <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
@@ -52,6 +57,7 @@ const Login = ({ setUserRole }) => {
             <option value="manager">Manager</option>
           </select>
         </div>
+        {/* Input fields for username and password */}
         <div className="mb-3">
           <label className="form-label">Username:</label>
           <input type="text" className="form-control" value={username} onChange={(e)=>setUsername(e.target.value)} required />
@@ -62,17 +68,19 @@ const Login = ({ setUserRole }) => {
         </div>
         <button type="submit" className="btn btn-primary">Login</button>
       </form>
+      {/* Display login messages */}
       {message && <div className="mt-3 alert alert-info">{message}</div>}
     </div>
   );
 };
 
+// OwnerDashboard component: Displays owner-specific features and data
 const OwnerDashboard = () => {
-  const [updateInfo, setUpdateInfo] = useState('');
-  const [message, setMessage] = useState('');
-  const [data, setData] = useState(null);
+  const [updateInfo, setUpdateInfo] = useState(''); // State to track business info updates
+  const [message, setMessage] = useState(''); // State to display messages
+  const [data, setData] = useState(null); // State to store fetched data
 
-  // Example: fetch business details
+  // Function to fetch business details
   const fetchData = async () => {
     try {
       const response = await fetch('http://localhost:5000/owner', {
@@ -91,7 +99,7 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Example: update business info endpoint
+  // Function to update business information
   const updateBusinessInfo = async () => {
     try {
       const response = await fetch('http://localhost:5000/owner/update', {
@@ -111,11 +119,10 @@ const OwnerDashboard = () => {
     }
   };
 
-  // ...add additional features (add store, product, update price, etc.) using similar patterns
-
   return (
     <div className="container mt-4">
       <h2>Owner Dashboard</h2>
+      {/* Button to fetch business data */}
       <button className="btn btn-secondary me-2" onClick={fetchData}>Fetch Business Data</button>
       <div className="mt-3">
         <h5>Update Business Info</h5>
@@ -130,6 +137,7 @@ const OwnerDashboard = () => {
           <button className="btn btn-outline-primary" onClick={updateBusinessInfo}>Update</button>
         </div>
       </div>
+      {/* Display messages and fetched data */}
       {message && <div className="alert alert-info">{message}</div>}
       {data && (
         <div className="mt-3">
@@ -141,11 +149,12 @@ const OwnerDashboard = () => {
   );
 };
 
+// ManagerDashboard component: Displays manager-specific features and data
 const ManagerDashboard = () => {
-  const [message, setMessage] = useState('');
-  const [data, setData] = useState(null);
+  const [message, setMessage] = useState(''); // State to display messages
+  const [data, setData] = useState(null); // State to store fetched data
 
-  // Example: fetch manager details
+  // Function to fetch manager details
   const fetchData = async () => {
     try {
       const response = await fetch('http://localhost:5000/manager', {
@@ -164,7 +173,7 @@ const ManagerDashboard = () => {
     }
   };
 
-  // Example: approve stock request endpoint
+  // Function to approve stock requests
   const approveRequest = async () => {
     try {
       const response = await fetch('http://localhost:5000/manager/approve', {
@@ -183,13 +192,13 @@ const ManagerDashboard = () => {
     }
   };
 
-  // ...add additional endpoints/features (notifications, stock requests, etc.) using similar patterns
-
   return (
     <div className="container mt-4">
       <h2>Manager Dashboard</h2>
+      {/* Buttons to fetch data and approve requests */}
       <button className="btn btn-secondary me-2" onClick={fetchData}>Fetch Manager Data</button>
       <button className="btn btn-success" onClick={approveRequest}>Approve Request</button>
+      {/* Display messages and fetched data */}
       {message && <div className="alert alert-info mt-3">{message}</div>}
       {data && (
         <div className="mt-3">
@@ -201,11 +210,13 @@ const ManagerDashboard = () => {
   );
 };
 
+// Main App component: Defines the structure and routing of the application
 function App() {
-  const [userRole, setUserRole] = useState(null);
+  const [userRole, setUserRole] = useState(null); // State to track the role of the logged-in user
 
   return (
     <>
+      {/* Navigation bar */}
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
         <div className="container-fluid">
           <Link className="navbar-brand" to="/">StoreSync</Link>
@@ -217,6 +228,7 @@ function App() {
               <li className="nav-item">
                 <Link className="nav-link" to="/">Home</Link>
               </li>
+              {/* Conditional links based on user role */}
               {!userRole && (
                 <li className="nav-item">
                   <Link className="nav-link" to="/login">Login</Link>
@@ -237,6 +249,7 @@ function App() {
         </div>
       </nav>
 
+      {/* Define routes for different pages */}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login setUserRole={setUserRole} />} />
