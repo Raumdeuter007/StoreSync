@@ -140,7 +140,10 @@ const auth_man = (req, res, next) =>
 const app = express();
 const PORT = 5000;
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000', // adjust this if your frontend runs on a different port
+    credentials: true
+}));
 const reg_bus = express.urlencoded({ 
     extended : false,
     limit: 10000,
