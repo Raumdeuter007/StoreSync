@@ -1,8 +1,12 @@
 import { Outlet, Navigate } from 'react-router-dom';
 
-const ProtectedRoute = () => {
-    const user = null;
-    return user ? <Outlet /> : <Navigate to="/login" />;
+type UserRole = 'owner' | 'manager';
+
+interface Props {
+    role: UserRole | undefined;
+}
+const ProtectedRoute = ({ role }: Props) => {
+    return role ? <Outlet /> : <Navigate to="/login" />;
 }
 
 export default ProtectedRoute;
