@@ -135,7 +135,7 @@ const PORT = 5000;
 
 app.use(
   cors({
-    origin: "http://localhost:3000", // adjust this if your frontend runs on a different port
+    origin: "http://localhost:5173", // adjust this if your frontend runs on a different port
     credentials: true,
   })
 );
