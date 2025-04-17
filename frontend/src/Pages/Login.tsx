@@ -1,16 +1,19 @@
-import { Dispatch, FormEvent, SetStateAction } from "react";
-import { useState } from "react";
+import { useState, FormEvent, useEffect, Dispatch } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { getItem } from "../utils/localStorage";
+import { server_logout } from "./Logout";
 type UserRole = 'owner' | 'manager';
 
 interface Props {
-    role: UserRole | undefined;
-    setRole: Dispatch<SetStateAction<UserRole | undefined>>;
+    setRole: Dispatch<any>
 }
 
-function Login({ role, setRole }: Props) {
+function Login({ setRole }: Props) {
+    useEffect(() => {
+        server_logout();
+    }, []);
     const [username, setUsername] = useState('');
+    const [this_role, setForm] = useState<UserRole>('owner');
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
 
@@ -19,7 +22,7 @@ function Login({ role, setRole }: Props) {
     // Function to handle login form submission
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const endpoint = role === 'owner' ? '/owner/login' : '/manager/login'; // Determine endpoint based on role
+        const endpoint = this_role == 'owner' ? '/owner/login' : '/manager/login'; // Determine endpoint based on role
         try {
             const response = await fetch(`http://localhost:5000${endpoint}`, {
                 method: 'POST',
@@ -29,8 +32,9 @@ function Login({ role, setRole }: Props) {
             });
             if (response.ok) {
                 setMessage('Logged in successfully!');
-                setRole(role); // Set user role in parent component
-                navigate(role === 'owner' ? '/owner' : '/manager'); // Navigate to respective dashboard
+                setRole(this_role);
+                console.log(getItem("role")); // Set user role in parent component
+                navigate(this_role === 'owner' ? '/owner' : '/manager'); // Navigate to respective dashboard
             } else {
                 setMessage('Login failed!');
             }
@@ -47,7 +51,7 @@ function Login({ role, setRole }: Props) {
                 {/* Dropdown to select user role */}
                 <div className="mb-3">
                     <label className="form-label">Select Role:</label>
-                    <select className="form-select" name="role" value={role} onChange={(e) => setRole(e.target.value === "owner" ? "owner" : "manager")}>
+                    <select className="form-select" name="role" value={this_role} onChange={(e) => setForm(e.target.value === "owner" ? "owner" : "manager")}>
                         <option value="owner">Owner</option>
                         <option value="manager">Manager</option>
                     </select>

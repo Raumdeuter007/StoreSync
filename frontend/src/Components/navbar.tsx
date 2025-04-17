@@ -1,7 +1,7 @@
 import Navlinks from "./navlinks";
 
 interface Props {
-    role: "manager" | "owner" | undefined;
+    role: "manager" | "owner" | null;
 }
 
 function Navbar({ role }: Props) {

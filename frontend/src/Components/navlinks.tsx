@@ -1,7 +1,7 @@
 import NavButton from "./NavButton";
 
 interface Props {
-    role: "manager" | "owner" | undefined;
+    role: "manager" | "owner" | null;
 }
 const Navlinks = ({ role }: Props) => {
     const ownerlinks = ["Stores", "Products", "Stock Requests"];

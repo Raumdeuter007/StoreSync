@@ -6,21 +6,30 @@ import Manager from "./Pages/Manager";
 import NotFound from "./Pages/NotFound";
 import ProtectedRoute from "./Components/ProtectedRoute";
 import Navbar from "./Components/navbar";
-import { useState } from "react";
-
-type UserRole = 'owner' | 'manager';
+import Logout from "./Pages/Logout";
+import { useEffect, useState } from "react";
+import { getItem, setItem } from "./utils/localStorage";
 
 function App() {
-	const [role, setRole] = useState<UserRole>();
+	const [role, setRole] = useState(() => {
+		const item = getItem("role");
+		return item || null;
+	});
+	useEffect(() => {
+		setItem("role", role);
+	}, [role])
 	return (
 		<>
 			<Navbar role={role} />
 			<BrowserRouter>
 				<Routes>
 					<Route path="/" element={<Home />} />
-					<Route path="/login" element={<Login setRole={setRole} role={role} />} />
-					<Route element={<ProtectedRoute role={role} />}>
+					<Route path="/login" element={<Login setRole={setRole} />} />
+					<Route path='/logout' element={<Logout setRole={setRole} />} />
+					<Route element={<ProtectedRoute allow='owner' />}>
 						<Route path="/owner" element={<Owner />} />
+					</Route>
+					<Route element={<ProtectedRoute allow='manager' />}>
 						<Route path="/manager" element={<Manager />} />
 					</Route>
 					<Route path="*" element={<NotFound />} />
