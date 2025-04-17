@@ -51,11 +51,11 @@ passport.use(
         .input("username", username)
         .query("SELECT * FROM Managers WHERE username = @username");
 
-      if (result.recordset.length === 0) done(null, false);
+      if (result.recordset.length === 0) return done(null, false);
       if (
         !(await helper.comparePassword(password, result.recordset[0].password))
       )
-        done(null, false);
+        return done(null, false);
 
       // console.log(result);
       if (result.recordsets.length === 0) done(null, false);
@@ -64,7 +64,7 @@ passport.use(
           user_id: result.recordset[0].managerID,
           role: "manager",
         };
-        done(null, dict);
+        return done(null, dict);
       }
     } catch (err) {
       console.log(err);
@@ -630,7 +630,6 @@ app.post(
 );
 
 app.post("/logout", auth_both, (req, res) => {
-  console.log(req.session);
   req.logout((err) => {
     if (err) return res.sendStatus(400);
     res.sendStatus(200);
