@@ -7,7 +7,6 @@ interface Props {
 }
 const ProtectedRoute = ({ allow }: Props) => {
     const role = getItem("role");
-    console.log(role);
     return (role && (role == allow)) ? <Outlet /> : <Navigate to="/logout" />;
 }
 

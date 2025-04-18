@@ -668,6 +668,37 @@ app.get("/manager", auth_man, async (req, res) => {
   }
 });
 
+app.get("/products", auth_both, async (req, res) => {
+  try {
+    if (req.user.role === "owner") {
+      const pool = await sql.connect(config);
+      const prods = await pool
+        .request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Products WHERE BusinessID = @id");
+      console.log(prods.recordset);
+      res.json(prods.recordset);
+    } else {
+      const pool = await sql.connect(config);
+      const store = await pool
+        .request()
+        .input("id", req.user.user_id)
+        .query("SELECT * FROM Stores WHERE ManagerID = @id");
+
+      if (store.recordset.length === 0) throw "No stores found";
+      let b_id = store.recordset[0].BusinessID;
+      const prods = await pool
+        .request()
+        .input("id", b_id)
+        .query("SELECT * FROM Products WHERE BusinessID = @id");
+      console.log(prods.recordset);
+      res.json(prods.recordset);
+    }
+  } catch (err) {
+    res.status(500).json({ err });
+  }
+});
+
 app.get("/manager/stockReq", auth_man, async (req, res) => {
   try {
     const pool = await sql.connect(config);

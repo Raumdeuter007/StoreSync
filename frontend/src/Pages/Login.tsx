@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect, Dispatch } from "react";
 import { useNavigate } from "react-router-dom";
-import { getItem } from "../utils/localStorage";
+import { setItem } from "../utils/localStorage";
 import { server_logout } from "./Logout";
 type UserRole = 'owner' | 'manager';
 
@@ -33,7 +33,7 @@ function Login({ setRole }: Props) {
             if (response.ok) {
                 setMessage('Logged in successfully!');
                 setRole(this_role);
-                console.log(getItem("role")); // Set user role in parent component
+                setItem("role", this_role); // Set user role in parent component
                 navigate(this_role === 'owner' ? '/owner' : '/manager'); // Navigate to respective dashboard
             } else {
                 setMessage('Login failed!');
