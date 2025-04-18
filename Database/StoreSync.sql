@@ -1111,7 +1111,7 @@ BEGIN
 END;
 GO
 
---  2. Get Business details if Owner
+--  2. Get Business details of Owner
 
 CREATE PROCEDURE Business_detailOfOwner @OwnerID INT
 AS
@@ -1657,7 +1657,8 @@ GO
 --	UPDATE Managers SET assignedStore = NULL WHERE ManagerID = @ManagerID;
 --END;
 --GO
-
+USE InventoryManagementSystem
+GO
 -- User Accounts and Access
 SELECT * FROM Owners;
 SELECT * FROM Managers;
