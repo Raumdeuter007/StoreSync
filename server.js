@@ -159,19 +159,19 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.get("/", function (req, res) {
-  sql.connect(config, function (err) {
-    if (err) console.log(err);
-    else {
-      let request = new sql.Request();
-      request.query("SELECT * FROM Managers", (err, record) => {
-        if (err) console.log(err);
-        else console.log(record);
-      });
-    }
-  });
-  res.end("It worked!");
-});
+// app.get("/", function (req, res) {
+//   sql.connect(config, function (err) {
+//     if (err) console.log(err);
+//     else {
+//       let request = new sql.Request();
+//       request.query("SELECT * FROM Managers", (err, record) => {
+//         if (err) console.log(err);
+//         else console.log(record);
+//       });
+//     }
+//   });
+//   res.end("It worked!");
+// });
 
 app.post("/owner/register", reg_bus, async (req, res) => {
   const { name, email, username, password, business, address } = req.body;
@@ -393,7 +393,6 @@ app.post("/add_stockreq", add_stock, auth_both, async (req, res) => {
         .request()
         .input("id", req.user.user_id)
         .query("SELECT * FROM Stores WHERE ManagerID = @id");
-      console.log(store);
       if (store.recordset.length === 0) throw "No stores found";
       if (store.recordset[0].StoreID !== Number(storeID))
         throw "You do not have permission for other stores";
@@ -575,7 +574,6 @@ app.delete("/owner/sto_manager/:id", auth_owner, async (req, res) => {
       .request()
       .input("id", id)
       .query("UPDATE Stores SET ManagerID = NULL WHERE ManagerID = @id");
-    console.log(record);
     if (record.rowsAffected[0] === 0)
       res.status(404).json({ message: "Manager Not found" });
     else res.json({ message: "Store Manager was deleted successfully" });
@@ -676,7 +674,6 @@ app.get("/products", auth_both, async (req, res) => {
         .request()
         .input("id", req.user.user_id)
         .query("SELECT * FROM Products WHERE BusinessID = @id");
-      console.log(prods.recordset);
       res.json(prods.recordset);
     } else {
       const pool = await sql.connect(config);
@@ -691,7 +688,6 @@ app.get("/products", auth_both, async (req, res) => {
         .request()
         .input("id", b_id)
         .query("SELECT * FROM Products WHERE BusinessID = @id");
-      console.log(prods.recordset);
       res.json(prods.recordset);
     }
   } catch (err) {
@@ -990,7 +986,6 @@ app.get("/PendingStockRequests", auth_both, async (req, res) => {
         .input("OwnerID", sql.Int, req.user.user_id)
         .execute("StoresWarehouse_ofOwner");
       id = all_store.recordset.map((c) => c.StoreID);
-      console.log(id);
       const all_result = [];
       for (let i = 0; i < id.length; i++) {
         const inte = await pool
@@ -1000,7 +995,6 @@ app.get("/PendingStockRequests", auth_both, async (req, res) => {
         for (let j = 0; j < inte.recordset.length; j++)
           all_result.push(inte.recordset[j]);
       }
-      console.log(all_result);
       res.json(all_result);
     } else {
       const store = await pool
