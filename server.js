@@ -1590,17 +1590,15 @@ app.put("/owner/decline_req/:SRid", auth_owner, async (req, res) => {
       .request()
       .input("RequestID", SRid)
       .input("ColumnName", sql.VarChar, "ReqStatus")
-      .input("NewVal", sql.VarChar, 2)
+      .input("NewVal", sql.VarChar, 3)
       .execute("UpdateStockRequests");
 
     if (result.recordset[0]["RetCode"] === 0)
-      result.recordset[0][
-        "message"
-      ] = `Successfully updated ${columnName} in Stock Request`;
+      result.recordset[0]["message"] = `Successfully rejected Stock Request`;
     else
       result.recordset[0][
         "message"
-      ] = `Could not update ${columnName} in Stock Request`;
+      ] = `Could not update the column in Stock Request`;
 
     res.json(result.recordset);
   } catch (err) {
