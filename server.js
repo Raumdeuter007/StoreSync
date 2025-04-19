@@ -933,7 +933,7 @@ app.get(
 
 //StoresWarehouse_ofOwner
 
-app.get("/owner/stores", auth_owner, async (req, res) => {
+app.get("/owner/store", auth_owner, async (req, res) => {
   try {
     const id = req.user.user_id;
     const pool = await sql.connect(config);
@@ -949,6 +949,39 @@ app.get("/owner/stores", auth_owner, async (req, res) => {
   }
 });
 
+app.get("/owner/stores", auth_owner, async (req, res) => {
+  try {
+    const id = req.user.user_id;
+    const pool = await sql.connect(config);
+
+    const result = await pool
+      .request()
+      .input("BusinessID", sql.Int, id)
+      .execute("BusinessStoreSummary");
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ err });
+  }
+});
+
+app.get("/owner/managers", auth_owner, async (req, res) => {
+  try {
+    const id = req.user.user_id;
+    const pool = await sql.connect(config);
+
+    const result = await pool
+      .request()
+      .input("BusinessID", sql.Int, id)
+      .query("SELECT * FROM Managers WHERE BusinessID = @BusinessID");
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ err });
+  }
+});
 // InventoryStockDetails
 
 app.get("/manager/inventory", auth_man, async (req, res) => {
