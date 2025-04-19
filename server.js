@@ -1145,6 +1145,19 @@ app.get("/manager/FetchStockRequest/:Rid", auth_man, async (req, res) => {
   }
 });
 
+app.get("/business", async (req, res) => {
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool
+      .request()
+      .query("SELECT BusinessID, BusinessName FROM Business");
+    res.json(result.recordset);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ err });
+  }
+});
+
 // CompletedReqsThisYear
 app.get("/manager/CompletedReqsThisYear", auth_man, async (req, res) => {
   try {

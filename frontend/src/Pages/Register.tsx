@@ -1,5 +1,4 @@
- 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Register() {
@@ -21,6 +20,28 @@ function Register() {
 
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
+
+  const [businesses, setBusinesses] = useState<{ BusinessID: number; BusinessName: string }[]>([]);
+
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/business', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setBusinesses(data);
+        }
+      } catch (err) {
+        console.error('Failed to load businesses:', err);
+      }
+    };
+
+    if (role === 'manager') {
+      fetchBusinesses();
+    }
+  }, [role]);
 
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -69,9 +90,9 @@ function Register() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-r from-gray-100 to-gray-200 mt-16">
-      <div className="bg-white p-5 rounded-xl shadow-xl w-80 transform hover:scale-[1.02] transition-transform z-10">
-        <div className="text-center mb-4">
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-r from-gray-100 to-gray-200 mt-16 px-4 overflow-hidden">
+      <div className="bg-white p-4 rounded-xl shadow-xl w-full max-w-[800px]">
+        <div className="text-center mb-2">
           <div className="w-14 h-14 bg-gray-900 rounded-full mx-auto mb-2 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -80,114 +101,123 @@ function Register() {
           <h2 className="text-xl font-bold text-gray-900 mb-1">Create Account</h2>
         </div>
 
-        <form onSubmit={handleRegister} className="space-y-4">
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Role</label>
-              <select
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-sm"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                <option value="owner">Business Owner</option>
-                <option value="manager">Store Manager</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                type="text"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-              <input
-                type="text"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-              <input
-                type="password"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            {role === "owner" && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                    value={business}
-                    onChange={(e) => setBusiness(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    required
-                  />
-                </div>
-              </>
-            )}
-
-            {role === "manager" && (
+        <form onSubmit={handleRegister} className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Business ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Select Role</label>
+                <select
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                >
+                  <option value="owner">Business Owner</option>
+                  <option value="manager">Store Manager</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Name</label>
                 <input
                   type="text"
                   className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-                  value={businessID}
-                  onChange={(e) => setBusinessID(e.target.value)}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                 />
               </div>
-            )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Email</label>
+                <input
+                  type="email"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Username</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Password</label>
+                <input
+                  type="password"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Confirm Password</label>
+                <input
+                  type="password"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
           </div>
+
+          {role === "owner" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Business Name</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  value={business}
+                  onChange={(e) => setBusiness(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-0.5">Address</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          {role === "manager" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-0.5">Business</label>
+              <select
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                value={businessID}
+                onChange={(e) => setBusinessID(e.target.value)}
+                required
+              >
+                <option value="">Select a business</option>
+                {businesses.map(business => (
+                  <option key={business.BusinessID} value={business.BusinessID}>
+                    {business.BusinessName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -198,7 +228,7 @@ function Register() {
         </form>
 
         {message && (
-          <div className={`mt-3 p-2 rounded-lg text-xs ${
+          <div className={`mt-2 p-2 rounded-lg text-xs ${
             message.includes('successfully')
               ? 'bg-green-50 text-green-700 border border-green-200'
               : 'bg-red-50 text-red-700 border border-red-200'
@@ -206,12 +236,6 @@ function Register() {
             {message}
           </div>
         )}
-
-        <div className="mt-4 text-center">
-          <p className="text-xs text-gray-500">
-            {role === 'owner' ? 'Business Owner Portal' : 'Store Manager Portal'}
-          </p>
-        </div>
       </div>
     </div>
   );
