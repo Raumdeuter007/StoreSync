@@ -21,7 +21,7 @@ function NotFound() {
                 </p>
                 <div className="space-y-2">
                     <Link 
-                        to="/login" 
+                        to="/logout" 
                         className="block w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors duration-300 font-medium text-sm"
                     >
                         Go to Login
