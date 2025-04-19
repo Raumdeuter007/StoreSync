@@ -102,7 +102,7 @@ function Register() {
         </div>
 
         <form onSubmit={handleRegister} className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-7">
             <div className="space-y-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-0.5">Select Role</label>
@@ -221,7 +221,7 @@ function Register() {
 
           <button
             type="submit"
-            className="w-full bg-gray-900 text-white py-1.5 rounded-lg hover:bg-gray-800 transform transition-all hover:scale-[1.02] active:scale-[0.98] font-medium shadow-lg text-sm"
+            className="w-[300px] mx-auto block bg-gray-900 text-white py-1.5 rounded-lg hover:bg-gray-800 transform transition-all hover:scale-[1.02] active:scale-[0.98] font-medium shadow-lg text-sm mt-4"
           >
             Register
           </button>
