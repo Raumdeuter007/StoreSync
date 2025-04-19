@@ -822,7 +822,7 @@ BEGIN
 	DECLARE @ERRNO NVARCHAR(4000) = NULL
 
 	BEGIN TRY
-		SELECT BusinessID, BusinessName, StoreID, StoreName,StoreAddress,managerID,ManagerName,ManagerEmail
+		SELECT BusinessID, BusinessName, StoreID, StoreName,StoreAddress,managerID AS ManagerID,ManagerName,ManagerEmail
 		FROM ABusinessStoreOverview AS ABSO
 		WHERE ABSO.BusinessID = @BusinessID
 

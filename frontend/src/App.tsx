@@ -10,6 +10,7 @@ import ProtectedRoute from "./Components/ProtectedRoute";
 import Navbar from "./Components/navbar";
 import { getItem, setItem } from "./utils/localStorage";
 import { Stock_Owner } from "./Pages/Stock_Owner";
+import { Stores } from './Pages/Stores';
 
 function App() {
 	const [role, setRole] = useState(() => {
@@ -32,10 +33,12 @@ function App() {
 						<Route element={<ProtectedRoute allow='owner' />}>
 							<Route path="/owner" element={<Owner />} />
 							<Route path="/owner/stock_req" element={<Stock_Owner />} />
+							<Route path="/owner/stores" element={<Stores />} />
 						</Route>
 						<Route element={<ProtectedRoute allow='manager' />}>
 							<Route path="/manager" element={<Manager />} />
 						</Route>
+						<Route path="/stores" element={<Stores />} />
 						<Route path="*" element={<NotFound />} />
 					</Routes>
 				</Suspense>

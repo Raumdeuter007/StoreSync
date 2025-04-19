@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import StockTable from "../Components/StockTable";
+import { Sidebar } from '../Components/Sidebar';
 
 interface InventoryItem {
 	RequestID: number;
@@ -36,6 +37,7 @@ export function Stock_Owner() {
     const [products, setProducts] = useState<Product[]>([]);
     const [selectedStores, setSelectedStores] = useState<number[]>([]);
     const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+    const [selectedStatuses, setSelectedStatuses] = useState<number[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState<StockRequestForm>({
         storeID: '',
@@ -46,6 +48,13 @@ export function Stock_Owner() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    const statusOptions = [
+        { id: 1, name: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
+        { id: 2, name: 'Approved', color: 'bg-green-100 text-green-800' },
+        { id: 3, name: 'Rejected', color: 'bg-red-100 text-red-800' },
+        { id: 5, name: 'Completed', color: 'bg-blue-100 text-blue-800' }
+    ];
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -54,7 +63,7 @@ export function Stock_Owner() {
                         credentials: 'include',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     }),
-                    fetch('http://localhost:5000/owner/stores', {
+                    fetch('http://localhost:5000/owner/store', {
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     }),
@@ -100,8 +109,12 @@ export function Stock_Owner() {
             filtered = filtered.filter(item => selectedProducts.includes(item.ProductID));
         }
 
+        if (selectedStatuses.length > 0) {
+            filtered = filtered.filter(item => selectedStatuses.includes(item.ReqStatus));
+        }
+
         setFilteredReqs(filtered);
-    }, [selectedStores, selectedProducts, stockReqs]);
+    }, [selectedStores, selectedProducts, selectedStatuses, stockReqs]);
 
     useEffect(() => {
         if (showModal) {
@@ -151,128 +164,58 @@ export function Stock_Owner() {
         }
     };
 
+    const handleStoreChange = (id: number) => {
+        setSelectedStores(prev => 
+            prev.includes(id) 
+                ? prev.filter(storeId => storeId !== id)
+                : [...prev, id]
+        );
+    };
+
+    const handleProductChange = (id: number) => {
+        setSelectedProducts(prev => 
+            prev.includes(id) 
+                ? prev.filter(productId => productId !== id)
+                : [...prev, id]
+        );
+    };
+
+    const handleStatusChange = (id: number) => {
+        setSelectedStatuses(prev => 
+            prev.includes(id) 
+                ? prev.filter(statusId => statusId !== id)
+                : [...prev, id]
+        );
+    };
+
+    const handleClearFilters = () => {
+        setSelectedStores([]);
+        setSelectedProducts([]);
+        setSelectedStatuses([]);
+    };
+
     return (
         <div className="mt-16 flex">
-            {/* Sidebar */}
-            <div className="w-64 fixed left-0 top-16 h-full bg-gray-50 border-r border-gray-200 shadow-lg">
-                <div className="p-6 space-y-8">
-                    {/* Store Filters */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                            <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            Stores
-                        </h3>
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                            {stores.map(store => (
-                                <label key={store.StoreID} 
-                                    className="flex items-center p-2 rounded-lg hover:bg-white transition-colors duration-150 cursor-pointer group">
-                                    <div className="relative flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedStores.includes(store.StoreID)}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setSelectedStores([...selectedStores, store.StoreID]);
-                                                } else {
-                                                    setSelectedStores(selectedStores.filter(id => id !== store.StoreID));
-                                                }
-                                            }}
-                                            className="hidden"
-                                        />
-                                        <div className={`w-5 h-5 border-2 rounded transition-colors duration-200 flex items-center justify-center
-                                            ${selectedStores.includes(store.StoreID) 
-                                                ? 'bg-blue-500 border-blue-500' 
-                                                : 'border-gray-300 group-hover:border-blue-400'}`}>
-                                            {selectedStores.includes(store.StoreID) && (
-                                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <span className={`ml-3 text-sm ${selectedStores.includes(store.StoreID) 
-                                        ? 'text-blue-600 font-medium' 
-                                        : 'text-gray-600 group-hover:text-gray-900'}`}>
-                                        {store.StoreName}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Product Filters */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                            <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                            Products
-                        </h3>
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                            {products.map(product => (
-                                <label key={product.ProductID} 
-                                    className="flex items-center p-2 rounded-lg hover:bg-white transition-colors duration-150 cursor-pointer group">
-                                    <div className="relative flex items-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedProducts.includes(product.ProductID)}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setSelectedProducts([...selectedProducts, product.ProductID]);
-                                                } else {
-                                                    setSelectedProducts(selectedProducts.filter(id => id !== product.ProductID));
-                                                }
-                                            }}
-                                            className="hidden"
-                                        />
-                                        <div className={`w-5 h-5 border-2 rounded transition-colors duration-200 flex items-center justify-center
-                                            ${selectedProducts.includes(product.ProductID) 
-                                                ? 'bg-blue-500 border-blue-500' 
-                                                : 'border-gray-300 group-hover:border-blue-400'}`}>
-                                            {selectedProducts.includes(product.ProductID) && (
-                                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <span className={`ml-3 text-sm ${selectedProducts.includes(product.ProductID) 
-                                        ? 'text-blue-600 font-medium' 
-                                        : 'text-gray-600 group-hover:text-gray-900'}`}>
-                                        {product.ProductName}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Clear Filters Button */}
-                    <button
-                        onClick={() => {
-                            setSelectedStores([]);
-                            setSelectedProducts([]);
-                        }}
-                        className="w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg 
-                            hover:bg-gray-50 hover:text-blue-600 hover:border-blue-400 transition-all duration-200 
-                            flex items-center justify-center space-x-2 shadow-sm"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        <span>Clear Filters</span>
-                    </button>
-                </div>
-            </div>
+            <Sidebar
+                stores={stores}
+                products={products}
+                statusOptions={statusOptions}
+                selectedStores={selectedStores}
+                selectedProducts={selectedProducts}
+                selectedStatuses={selectedStatuses}
+                onStoreChange={handleStoreChange}
+                onProductChange={handleProductChange}
+                onStatusChange={handleStatusChange}
+                onClearFilters={handleClearFilters}
+            />
 
             {/* Main Content */}
-            <div className="ml-64 flex-1 px-6 py-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold">Stock Requests</h1>
+            <div className="ml-64 flex-1 px-4 py-6 overflow-x-hidden">
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-xl font-bold">Stock Requests</h1>
                     <button
                         onClick={() => setShowModal(true)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg transition-colors duration-200 font-medium text-sm"
                     >
                         Create New Stock Request
                     </button>
