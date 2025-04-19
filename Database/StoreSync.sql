@@ -795,13 +795,14 @@ END
 --BusinessID, BusinessName, StoreID, StoreName, StoreAddress, ManagerID, ManagerName, ManagerEmail
 GO
 --Summary of ALL Businesses and associated Stores and Managers
+
 CREATE VIEW ABusinessStoreOverview AS
 (
-	SELECT B.BusinessID, B.BusinessName, S.StoreID, S.StoreName, S.StoreAddress,M.managerID, M.name AS ManagerName, M.email AS ManagerEmail
-	FROM Business AS B LEFT JOIN Managers AS M      --LEFT JOIN for a state when a business has no managers
-	ON B.BusinessID = M.businessID
-	LEFT JOIN Stores as S
-	ON S.BusinessID = B.BusinessID   -- Ensuring all stores are included, even those without managers(max 1 such at a time which is going to be deleted soon)
+	SELECT B.BusinessID, B.BusinessName, S.StoreID, S.StoreName, S.StoreAddress, M.managerID AS ManagerID, M.name AS ManagerName, M.email AS ManagerEmail
+	FROM Stores S FULL JOIN Managers AS M      --LEFT JOIN for a state when a business has no managers
+	ON M.managerID = S.ManagerID
+	FULL JOIN Business AS B       --LEFT JOIN for a state when a business has no managers
+	ON B.BusinessID = S.businessID OR B.BusinessID = M.businessID-- Ensuring all stores are included, even those without managers(max 1 such at a time which is going to be deleted soon)
 )
 GO
 
@@ -812,7 +813,7 @@ select * from Stores
 
 
 
-GO
+GO	
 CREATE PROCEDURE BusinessStoreSummary (
 @BusinessID INT
 )
