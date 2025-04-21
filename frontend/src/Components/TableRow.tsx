@@ -9,6 +9,7 @@ interface InventoryItem {
     RequestedQuantity: number;
     ReqStatus: number;
     request_date: string;
+    fullfillmentdate: string;
 }
 
 interface TableRowProps {
@@ -116,8 +117,7 @@ const TableRow = ({ item, index, onDelete }: TableRowProps) => {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            timeZone: 'utc'    
         });
     };
 
@@ -127,6 +127,16 @@ const TableRow = ({ item, index, onDelete }: TableRowProps) => {
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.RequestedQuantity}</td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {formatDate(item.request_date)}
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-500">
+                    {item.fullfillmentdate ? new Date(item.fullfillmentdate).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        timeZone: 'Asia/Karachi'
+                    }) : '-'}
+                </div>
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(item.ReqStatus)}`}>
