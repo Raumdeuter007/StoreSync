@@ -12,11 +12,12 @@ interface InventoryItem {
 	request_date: string;
 }
 
-interface Props {
-	data: Array<InventoryItem>
+interface StockTableProps {
+	data: InventoryItem[];
+	onDelete: (requestId: number) => void;
 }
 
-const StockTable = ({ data }: Props) => {
+const StockTable = ({ data, onDelete }: StockTableProps) => {
 	// Group data by StoreName
 	const groupedData = data.reduce((acc, item) => {
 		if (!acc[item.StoreName]) {
@@ -40,7 +41,12 @@ const StockTable = ({ data }: Props) => {
 									<TableHeader />
 									<tbody className="bg-white divide-y divide-gray-200">
 										{storeData.map((item, index) => (
-											<TableRow key={item.RequestID} item={item} index={index} />
+											<TableRow 
+												key={item.RequestID} 
+												item={item} 
+												index={index}
+												onDelete={onDelete}
+											/>
 										))}
 									</tbody>
 								</table>
