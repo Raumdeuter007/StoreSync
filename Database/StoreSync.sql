@@ -1595,13 +1595,12 @@ GO
 --GO
 
 --4. Remove Stock requests when the requesting store asks to cancel request -> If not processed, can be cancelled
-
 CREATE PROCEDURE Cancel_StockRequest @RequestID INT
 AS
 BEGIN 
 
-    IF (SELECT ReqStatus FROM StockRequests 
-	    WHERE RequestID = @RequestID ) = 1 -- Pending
+    IF EXISTS (SELECT * FROM StockRequests 
+	    WHERE RequestID = @RequestID AND ReqStatus = 1)-- Pending
 		 
     BEGIN
         DELETE FROM StockRequests WHERE RequestID = @RequestID;

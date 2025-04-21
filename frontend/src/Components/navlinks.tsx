@@ -16,7 +16,7 @@ const Navlinks = ({ role }: Props) => {
                     <NavButton link={"owner" + link[1]} value={link[0]} key={i} />
                 ))}
                 {role === "manager" && managerlinks.map((link, i) => (
-                    <NavButton link={link[1]} value={"manager" + link[0]} key={i} />
+                    <NavButton link={"manager" + link[1]} value={link[0]} key={i} />
                 ))}
                 {role == null && defo.map((link, i) => (
                     <NavButton link={link[1]} value={link[0]} key={i} />
