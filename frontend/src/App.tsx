@@ -11,6 +11,7 @@ import ProtectedRoute from "./Components/ProtectedRoute";
 import Navbar from "./Components/navbar";
 import { getItem, setItem } from "./utils/localStorage";
 import { Stock_Owner } from "./Pages/Stock_Owner";
+import { Stock_Manager } from "./Pages/Stock_Manager";
 import { Stores } from './Pages/Stores';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
 						</Route>
 						<Route element={<ProtectedRoute allow='manager' />}>
 							<Route path="/manager" element={<Manager />} />
+							<Route path="/manager/stock_req" element={<Stock_Manager />} />
 						</Route>
 						<Route path="/stores" element={<Stores />} />
 						<Route path="*" element={<NotFound />} />

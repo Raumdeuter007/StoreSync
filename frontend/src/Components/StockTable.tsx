@@ -10,6 +10,7 @@ interface InventoryItem {
 	RequestedQuantity: number;
 	ReqStatus: number;
 	request_date: string;
+	fullfillmentdate: string;
 }
 
 interface StockTableProps {

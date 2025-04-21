@@ -1699,7 +1699,12 @@ app.put("/manager/complete_req/:SRid", auth_man, async (req, res) => {
       .input(
         "NewVal",
         sql.VarChar,
-        new Date().toISOString().slice(0, 19).replace("T", " ")
+        new Date(
+          new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" })
+        )
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ")
       )
       .query(
         "UPDATE StockRequests SET fullfillmentdate = @NewVal WHERE RequestID = @RequestID"

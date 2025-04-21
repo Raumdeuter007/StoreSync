@@ -1163,12 +1163,13 @@ END;
 GO
 
 --  6. Get All Stock Requests for a Store (may be from manager or owner)
-
 CREATE PROCEDURE stockRequestsOfStore @StoreID INT
 AS
 BEGIN
-     SELECT RequestID, RequestingStoreID, ProductID, RequestedQuantity, ReqStatus, request_date, approvedby, fullfillmentdate
+     SELECT RequestID, RequestingStoreID, Products.ProductID, ProductName, RequestedQuantity, ReqStatus, request_date, approvedby, fullfillmentdate
      FROM StockRequests
+	 JOIN Products
+	 ON Products.ProductID = StockRequests.ProductID
      WHERE RequestingStoreID = @StoreID; 
 END;
 GO
