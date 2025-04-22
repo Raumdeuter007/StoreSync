@@ -1595,6 +1595,7 @@ GO
 --END;
 --GO
 
+GO
 --4. Remove Stock requests when the requesting store asks to cancel request -> If not processed, can be cancelled
 CREATE PROCEDURE Cancel_StockRequest @RequestID INT
 AS
