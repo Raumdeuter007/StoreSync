@@ -1,9 +1,9 @@
 // Core React imports for hooks and types
 import { useState, FormEvent, useEffect, Dispatch } from "react";
 // React Router hook for programmatic navigation
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 // Utility for persisting data in browser's localStorage
-import { setItem } from "../utils/localStorage";
+import { getItem, setItem } from "../utils/localStorage";
 // Function to clear existing session
 import { server_logout } from "./Logout";
 
@@ -17,11 +17,15 @@ interface Props {
 }
 
 function Login({ setRole }: Props) {
-    // Clear any existing session when component mounts
-    // This ensures a fresh login state
+    const location = useLocation();
+    
+    // Only logout if coming from a route other than /logout
     useEffect(() => {
-        server_logout();
-    }, []);
+        const currentRole = getItem("role");
+        if (currentRole && location.state?.from !== '/logout') {
+            server_logout();
+        }
+    }, [location]);
 
     // State management for form inputs and feedback
     const [username, setUsername] = useState('');        // Username input state

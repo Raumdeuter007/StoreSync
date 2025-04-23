@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { Dispatch, useEffect } from 'react';
-import { getItem } from '../utils/localStorage';
+import { getItem, setItem } from '../utils/localStorage';
 
 interface Props {
     setRole: Dispatch<any>
@@ -10,6 +10,7 @@ const Logout = ({ setRole }: Props) => {
 
     useEffect(() => {
         server_logout();
+        setItem("role", null);
         setRole(null);
     }, []);
     return (
@@ -18,7 +19,7 @@ const Logout = ({ setRole }: Props) => {
 }
 
 export function server_logout() {
-    if (getItem("role") !== undefined) {
+    if (getItem("role") != undefined && getItem("role") != null) {
         try {
             fetch('http://localhost:5000/logout', {
                 method: 'POST',
