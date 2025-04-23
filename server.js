@@ -931,6 +931,24 @@ app.get(
   }
 );
 
+app.get("/manager/store", auth_man, async (req, res) => {
+  try {
+    const id = req.user.user_id;
+    const pool = await sql.connect(config);
+
+    const result = await pool
+      .request()
+      .input("ManagerID", sql.Int, id)
+      .query(
+        "SELECT StoreID, StoreName FROM Stores WHERE ManagerID = @ManagerID"
+      );
+
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ err });
+  }
+});
+
 //StoresWarehouse_ofOwner
 
 app.get("/owner/store", auth_owner, async (req, res) => {
@@ -1038,7 +1056,7 @@ app.get("/owner/inventory", auth_owner, async (req, res) => {
         .execute("InventoryStockDetails"); // This SP gets inventory for a specific store
 
       // Add store context (ID and Name) to each inventory item before adding to the main list
-      const inventoryWithContext = inventoryResult.recordset.map(item => ({
+      const inventoryWithContext = inventoryResult.recordset.map((item) => ({
         ...item, // Spread existing item properties (ProductID, ProductName, stockQuantity)
         StoreID: storeId,
         StoreName: storeName,
@@ -1050,13 +1068,15 @@ app.get("/owner/inventory", auth_owner, async (req, res) => {
 
     // Step 3: Return the aggregated inventory details from all stores
     res.json(allInventoryDetails);
-
   } catch (err) {
     console.error("Error fetching inventory for owner:", err); // Log the error for debugging
     // Send a generic server error response
-    res.status(500).json({ error: "Failed to retrieve inventory details.", details: err.message });
+    res.status(500).json({
+      error: "Failed to retrieve inventory details.",
+      details: err.message,
+    });
   }
-}); 
+});
 
 // PendingStockRequests
 
@@ -1411,7 +1431,7 @@ app.put("/manager/sale/:Sid/:Pid/:quantity", auth_man, async (req, res) => {
       .query("SELECT * FROM Stores WHERE ManagerID = @id");
 
     if (store.recordset.length === 0) throw "No stores found";
-    if (store.recordset[0].StoreID !== Number(warehouseID))
+    if (store.recordset[0].StoreID !== Number(Sid))
       throw "You do not have permission for other stores";
 
     let b_id = store.recordset[0].BusinessID;
@@ -1424,7 +1444,7 @@ app.put("/manager/sale/:Sid/:Pid/:quantity", auth_man, async (req, res) => {
 
     let flag = false;
     for (let i = 0; !flag && i < prods.recordset.length; i++) {
-      if (prods.recordset[i].ProductID === Number(productID)) {
+      if (prods.recordset[i].ProductID === Number(Pid)) {
         flag = true;
       }
     }
@@ -1435,7 +1455,7 @@ app.put("/manager/sale/:Sid/:Pid/:quantity", auth_man, async (req, res) => {
       .input("StoreID", sql.Int, Sid)
       .input("ProductID", sql.Int, Pid)
       .query(
-        "SELECT * FROM Inventory WHERE StoreID = @StoreID AND ProductID = @ProductID"
+        "SELECT * FROM Inventory WHERE warehouseID = @StoreID AND ProductID = @ProductID"
       );
 
     if (quantity_in_stock.recordset.length === 0)
