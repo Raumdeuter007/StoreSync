@@ -5,7 +5,7 @@ interface Props {
 }
 
 const Navlinks = ({ role }: Props) => {
-    const ownerlinks = [["Stores", "/stores"], ["Products", "/products"], ["Stock Requests", "/stock_req"]];
+    const ownerlinks = [["Stores", "/stores"], ["Products", "/products"], ["Stock Requests", "/stock_req"], ["Inventory", "/inventory"]];
     const managerlinks = [["Stock Requests", "/stock_req"], ["Products", "/products"], ["Inventory", "/inventory"]];
     const defo = [["Register", "/register"], ["Sign In", "/login"]];
     
