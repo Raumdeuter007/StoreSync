@@ -1003,9 +1003,60 @@ app.get("/manager/inventory", auth_man, async (req, res) => {
 
     res.json(result.recordset);
   } catch (err) {
+    console.log(err);
     res.status(500).json({ err });
   }
 });
+
+app.get("/owner/inventory", auth_owner, async (req, res) => {
+  try {
+    const ownerId = req.user.user_id; // Get owner ID from authenticated user
+    const pool = await sql.connect(config);
+
+    // Step 1: Get all stores associated with the owner's business
+    const storesResult = await pool
+      .request()
+      .input("OwnerID", sql.Int, ownerId)
+      .execute("StoresWarehouse_ofOwner"); // This SP gets stores for an owner
+
+    if (!storesResult.recordset || storesResult.recordset.length === 0) {
+      // If the owner has no stores, return an empty array
+      return res.json([]);
+    }
+
+    const allInventoryDetails = [];
+
+    // Step 2: Iterate through each store and get its inventory details
+    for (const store of storesResult.recordset) {
+      const storeId = store.StoreID;
+      const storeName = store.StoreName; // Keep store name for context
+
+      // Execute InventoryStockDetails for the current store ID
+      const inventoryResult = await pool
+        .request()
+        .input("StoreID", sql.Int, storeId)
+        .execute("InventoryStockDetails"); // This SP gets inventory for a specific store
+
+      // Add store context (ID and Name) to each inventory item before adding to the main list
+      const inventoryWithContext = inventoryResult.recordset.map(item => ({
+        ...item, // Spread existing item properties (ProductID, ProductName, stockQuantity)
+        StoreID: storeId,
+        StoreName: storeName,
+      }));
+
+      // Add the inventory details for the current store to the aggregate list
+      allInventoryDetails.push(...inventoryWithContext);
+    }
+
+    // Step 3: Return the aggregated inventory details from all stores
+    res.json(allInventoryDetails);
+
+  } catch (err) {
+    console.error("Error fetching inventory for owner:", err); // Log the error for debugging
+    // Send a generic server error response
+    res.status(500).json({ error: "Failed to retrieve inventory details.", details: err.message });
+  }
+}); 
 
 // PendingStockRequests
 
