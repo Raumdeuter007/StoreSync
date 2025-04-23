@@ -43,6 +43,7 @@ function Manager() {
     };
 
     return (
+     <div className="min-h-screen bg-gray-50 flex flex-col items-center">
         <div className="container mt-4">
             <h2>Manager Dashboard</h2>
             {/* Buttons to fetch data and approve requests */}
@@ -56,6 +57,32 @@ function Manager() {
                     <pre>{JSON.stringify(data, null, 2)}</pre>
                 </div>
             )}
+        </div>
+         
+          {}
+            <div className="mt-8 grid grid-cols-3 gap-8">
+                {}
+                <svg className="w-64 h-64 text-gray-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                    <path d="M4 7V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/>
+                    <path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                    <path d="M8 12h8"/>
+                    <path d="M8 16h8"/>
+                </svg>
+
+                {}
+                <svg className="w-64 h-64 text-gray-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                    <path d="M21 8v13H3V8"/>
+                    <path d="M1 3h22v5H1z"/>
+                    <path d="M10 12h4"/>
+                    <path d="M12 12v7"/>
+                </svg>
+
+                {}
+                <svg className="w-64 h-64 text-gray-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+            </div>
         </div>
     );
 }
