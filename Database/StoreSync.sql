@@ -303,6 +303,20 @@ END;
 GO
 
 --UPDATE QUERIES
+-- Add Sale in Inventory
+CREATE PROCEDURE Sale @StoreID INT, @ProductID INT, @Quantity INT
+AS
+BEGIN 
+	IF EXISTS (SELECT stockQuantity FROM Inventory WHERE ProductID = @ProductID AND @StoreID = warehouseID
+		AND stockQuantity >= @Quantity)
+	BEGIN
+		UPDATE Inventory
+		SET stockQuantity -= @Quantity
+		WHERE warehouseID = @StoreID
+		AND ProductID = @ProductID
+	END;
+END;
+GO
 -- 1. Update Owner Details
 
 --GO
@@ -1151,13 +1165,13 @@ END;
 GO
 
 --  5. Get Inventory Stock Details for Stores
-
 CREATE PROCEDURE InventoryStockDetails @StoreID INT
 AS
 BEGIN
-    SELECT warehouseID, Products.ProductID, ProductName, stockQuantity 
+    SELECT warehouseID, StoreName, Products.ProductID, ProductName, stockQuantity 
     FROM Inventory 
 	JOIN Products ON Products.ProductID = Inventory.ProductID
+	JOIN Stores ON Stores.StoreID = Inventory.warehouseID
 	WHERE warehouseID = @StoreID;
 END;
 GO
@@ -1595,6 +1609,7 @@ GO
 --END;
 --GO
 
+GO
 --4. Remove Stock requests when the requesting store asks to cancel request -> If not processed, can be cancelled
 CREATE PROCEDURE Cancel_StockRequest @RequestID INT
 AS
