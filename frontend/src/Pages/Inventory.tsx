@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import SaleModal from '../Components/SaleModal';
 
 /**
  * Interface for inventory items received from the API
@@ -7,7 +8,17 @@ interface InventoryItem {
     StoreName: string;
     ProductName: string;
     stockQuantity: number;
-    MinQuantity?: number; // Optional as it might come from a different endpoint
+    ProductID: number;
+    StoreID: number;
+    MinQuantity?: number;
+}
+
+/**
+ * Interface for store details
+ */
+interface StoreDetails {
+    StoreID: number;
+    StoreName: string;
 }
 
 /**
@@ -16,7 +27,7 @@ interface InventoryItem {
 interface ReorderProduct {
     ProductID: number;
     ProductName: string;
-    CurrentQuantity: number;
+    stockQuantity: number;
     MinQuantity: number;
     MaxQuantity: number;
     ReorderAmount: number;
@@ -47,6 +58,47 @@ export function Inventory() {
         message: ''
     });
     const [formError, setFormError] = useState('');
+    const [showSaleModal, setShowSaleModal] = useState(false);
+    const [selectedSaleProduct, setSelectedSaleProduct] = useState<InventoryItem | null>(null);
+    const [saleError, setSaleError] = useState<string | null>(null);
+    const [storeDetails, setStoreDetails] = useState<StoreDetails[]>([]);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
+    // Add useEffect to update formData when selectedProduct changes
+    useEffect(() => {
+        if (selectedProduct) {
+            setFormData({
+                amount: selectedProduct.ReorderAmount,
+                message: `Requesting reorder for ${selectedProduct.ProductName} due to low stock. Current quantity: ${selectedProduct.stockQuantity}, Minimum required: ${selectedProduct.MinQuantity || 5}`
+            });
+        }
+    }, [selectedProduct]);
+
+    /**
+     * Fetches store details from the API
+     */
+    useEffect(() => {
+        const fetchStoreDetails = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/manager/store', {
+                    credentials: 'include',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch store details');
+                }
+
+                const data: StoreDetails[] = await response.json();
+                setStoreDetails(data);
+            } catch (err) {
+                console.error('Store details fetch error:', err);
+                setError('Failed to load store details');
+            }
+        };
+
+        fetchStoreDetails();
+    }, []);
 
     /**
      * Fetches inventory data from the API
@@ -109,9 +161,54 @@ export function Inventory() {
         setSelectedProduct(product);
         setFormData({
             amount: product.ReorderAmount,
-            message: `Requesting reorder for ${product.ProductName} due to low stock. Current quantity: ${product.CurrentQuantity}, Minimum required: ${product.MinQuantity}`
+            message: `Requesting reorder for ${product.ProductName} due to low stock. Current quantity: ${product.stockQuantity}, Minimum required: ${product.MinQuantity || 5}`
         });
         setShowReorderModal(true);
+    };
+
+    /**
+     * Handles the sale action for a product
+     * @param product The product to sell
+     */
+    const handleSaleClick = (product: InventoryItem) => {
+        if (!storeDetails || storeDetails.length === 0) {
+            setSaleError('Store details not available. Please try again.');
+            return;
+        }
+        setSelectedSaleProduct(product);
+        setShowSaleModal(true);
+        setSaleError(null);
+    };
+
+    /**
+     * Handles the sale confirmation
+     * @param quantity The quantity to sell
+     */
+    const handleSaleConfirm = async (quantity: number) => {
+        if (!selectedSaleProduct || !storeDetails || storeDetails.length === 0) return;
+
+        try {
+            const response = await fetch(
+                `http://localhost:5000/manager/sale/${storeDetails[0].StoreID}/${selectedSaleProduct.ProductID}/${quantity}`,
+                {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to record sale');
+            }
+
+            // Close modal and refresh the page to show updated inventory
+            setShowSaleModal(false);
+            window.location.reload();
+        } catch (err) {
+            setSaleError('Failed to record sale. Please try again.');
+        }
     };
 
     /**
@@ -131,32 +228,29 @@ export function Inventory() {
         return true;
     };
 
-    /**
-     * Handles form input changes
-     * @param e The form event
-     */
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: name === 'amount' ? Number(value) : value
-        }));
-    };
 
     /**
      * Confirms and processes the reorder request
      */
     const handleConfirmReorder = async () => {
-        if (!selectedProduct || !validateForm()) return;
+        if (!selectedProduct || !validateForm()) {
+            return;
+        }
+
+        if (!storeDetails || storeDetails.length === 0) {
+            setError('Store details not available. Please try again.');
+            return;
+        }
 
         try {
-            const response = await fetch('http://localhost:5000/manager/reorder', {
+            const response = await fetch('http://localhost:5000/add_stockreq', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    productId: selectedProduct.ProductID.toString(),
-                    amount: formData.amount.toString(),
+                    storeID: storeDetails[0].StoreID.toString(),
+                    productID: selectedProduct.ProductID.toString(),
+                    quantity: formData.amount.toString(),
                     message: formData.message
                 })
             });
@@ -165,13 +259,14 @@ export function Inventory() {
                 throw new Error('Failed to place reorder');
             }
 
-            // Refresh the page to show updated inventory
-            window.location.reload();
+            // Show success message
+            setSuccessMessage(`Stock request for ${selectedProduct.ProductName} has been successfully created.`);
+            setShowSuccessModal(true);
+            setShowReorderModal(false);
         } catch (err) {
             console.error('Reorder error:', err);
             setError('Failed to place reorder. Please try again.');
         } finally {
-            setShowReorderModal(false);
             setSelectedProduct(null);
             setFormData({ amount: 0, message: '' });
         }
@@ -215,29 +310,35 @@ export function Inventory() {
             {/* Low Stock Alerts Banner */}
             {reorderProducts.length > 0 && (
                 <div className="mb-8">
-                    <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
-                        <div className="flex items-center">
+                    <div className="bg-red-50 border-l-4 border-red-400 p-6 rounded-lg shadow-sm">
+                        <div className="flex items-start">
                             <div className="flex-shrink-0">
-                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <svg className="h-6 w-6 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                 </svg>
                             </div>
-                            <div className="ml-3">
-                                <h3 className="text-sm font-medium text-red-800">
+                            <div className="ml-4 flex-1">
+                                <h3 className="text-lg font-medium text-red-800">
                                     Low Stock Alerts
                                 </h3>
                                 <div className="mt-2 text-sm text-red-700">
-                                    <ul className="list-disc pl-5 space-y-1">
+                                    <p className="mb-3">The following products are running low on stock and need to be reordered:</p>
+                                    <ul className="space-y-2">
                                         {reorderProducts.map((product) => (
-                                            <li key={product.ProductID} className="flex items-center justify-between">
-                                                <span>
-                                                    {product.ProductName} - Current: {product.CurrentQuantity}, Min: {product.MinQuantity}
-                                                </span>
+                                            <li key={product.ProductID} className="flex items-center justify-between bg-white/50 p-3 rounded-md">
+                                                <div className="flex-1">
+                                                    <span className="font-medium">{product.ProductName}</span>
+                                                    <div className="text-sm text-red-600 mt-1">
+                                                        <span>Current Stock: {product.stockQuantity}</span>
+                                                        <span className="mx-2">•</span>
+                                                        <span>Minimum Required: {product.MinQuantity || 5}</span>
+                                                    </div>
+                                                </div>
                                                 <button
                                                     onClick={() => handleReorder(product)}
-                                                    className="ml-4 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors duration-200"
+                                                    className="ml-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                                 >
-                                                    Reorder
+                                                    Reorder Now
                                                 </button>
                                             </li>
                                         ))}
@@ -277,50 +378,51 @@ export function Inventory() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {storeItems.map((item, index) => {
-                                    const needsReorder = reorderProducts.some(
-                                        p => p.ProductName === item.ProductName
-                                    );
-                                    return (
-                                        <tr 
-                                            key={`${item.ProductName}-${index}`}
-                                            className={needsReorder ? 'bg-red-50' : ''}
-                                        >
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.ProductName}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.stockQuantity}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                {needsReorder ? (
-                                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                        Low Stock
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                        In Stock
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                {needsReorder && (
-                                                    <button
-                                                        onClick={() => {
-                                                            const product = reorderProducts.find(
-                                                                p => p.ProductName === item.ProductName
-                                                            );
-                                                            if (product) handleReorder(product);
-                                                        }}
-                                                        className="text-red-600 hover:text-red-900 transition-colors duration-200"
-                                                    >
-                                                        Reorder
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                {storeItems.map((item) => (
+                                    <tr 
+                                        key={`${item.StoreID}-${item.ProductID}`}
+                                        className={reorderProducts.some(p => p.ProductName === item.ProductName) ? 'bg-red-50' : ''}
+                                    >
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {item.ProductName}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {item.stockQuantity}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            {reorderProducts.some(p => p.ProductName === item.ProductName) ? (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                                    Low Stock
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    In Stock
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                            {reorderProducts.some(p => p.ProductName === item.ProductName) && (
+                                                <button
+                                                    onClick={() => {
+                                                        const product = reorderProducts.find(
+                                                            p => p.ProductName === item.ProductName
+                                                        );
+                                                        if (product) handleReorder(product);
+                                                    }}
+                                                    className="text-red-600 hover:text-red-900 transition-colors duration-200"
+                                                >
+                                                    Reorder
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleSaleClick(item)}
+                                                className="text-blue-600 hover:text-blue-900 transition-colors duration-200"
+                                            >
+                                                Record Sale
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
@@ -329,8 +431,8 @@ export function Inventory() {
 
             {/* Reorder Modal */}
             {showReorderModal && selectedProduct && (
-                <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm flex items-center justify-center z-40">
+                    <div className="bg-white/95 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
                         <h3 className="text-lg font-medium text-gray-900 mb-4">
                             Reorder {selectedProduct.ProductName}
                         </h3>
@@ -344,8 +446,14 @@ export function Inventory() {
                                     type="number"
                                     name="amount"
                                     min="1"
-                                    value={formData.amount}
-                                    onChange={handleInputChange}
+                                    value={formData.amount || ''}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            amount: value === '' ? 0 : Number(value)
+                                        }));
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -356,8 +464,13 @@ export function Inventory() {
                                 </label>
                                 <textarea
                                     name="message"
-                                    value={formData.message}
-                                    onChange={handleInputChange}
+                                    value={formData.message || ''}
+                                    onChange={(e) => {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            message: e.target.value
+                                        }));
+                                    }}
                                     rows={4}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     placeholder="Add any additional information about this reorder request..."
@@ -385,6 +498,53 @@ export function Inventory() {
                                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors duration-200"
                             >
                                 Confirm Reorder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sale Modal */}
+            {showSaleModal && selectedSaleProduct && storeDetails.length > 0 && (
+                <SaleModal
+                    isOpen={showSaleModal}
+                    onClose={() => {
+                        setShowSaleModal(false);
+                        setSelectedSaleProduct(null);
+                        setSaleError(null);
+                    }}
+                    onConfirm={handleSaleConfirm}
+                    productName={selectedSaleProduct.ProductName}
+                    storeName={storeDetails[0].StoreName}
+                    currentStock={selectedSaleProduct.stockQuantity}
+                    error={saleError}
+                />
+            )}
+
+            {/* Success Message Modal */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+                        <div className="flex items-center justify-center mb-4">
+                            <svg className="h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 text-center mb-2">
+                            Success!
+                        </h3>
+                        <p className="text-gray-600 text-center mb-6">
+                            {successMessage}
+                        </p>
+                        <div className="flex justify-center">
+                            <button
+                                onClick={() => {
+                                    setShowSuccessModal(false);
+                                    window.location.href = '/manager/stock_req';
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                View Stock Requests
                             </button>
                         </div>
                     </div>
