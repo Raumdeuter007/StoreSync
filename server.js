@@ -1261,7 +1261,6 @@ app.put(
         .input("id", req.user.user_id)
         .query("SELECT * FROM Products WHERE businessID = @id");
       if (mans.recordset.length === 0) throw "Product Not found";
-      console.log(mans);
       let flag = false;
       for (let i = 0; !flag && i < mans.recordset.length; i++) {
         if (mans.recordset[i].ProductID === Number(ProductID)) {
