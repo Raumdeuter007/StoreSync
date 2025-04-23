@@ -13,6 +13,7 @@ import { getItem, setItem } from "./utils/localStorage";
 import { Stock_Owner } from "./Pages/Stock_Owner";
 import { Stock_Manager } from "./Pages/Stock_Manager";
 import { Stores } from './Pages/Stores';
+import { Products } from './Pages/Products';
 
 function App() {
 	const [role, setRole] = useState(() => {
@@ -37,6 +38,7 @@ function App() {
 							<Route path="/owner" element={<Owner />} />
 							<Route path="/owner/stock_req" element={<Stock_Owner />} />
 							<Route path="/owner/stores" element={<Stores />} />
+							<Route path="/owner/products" element={<Products />} />
 						</Route>
 						<Route element={<ProtectedRoute allow='manager' />}>
 							<Route path="/manager" element={<Manager />} />
