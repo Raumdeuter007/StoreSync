@@ -1349,6 +1349,62 @@ app.put("/owner/readNotification/:id", auth_owner, async (req, res) => {
   }
 });
 
+app.put("/manager/sale/:Sid/:Pid/:quantity", auth_man, async (req, res) => {
+  try {
+    const { Sid, Pid, quantity } = req.params;
+    const pool = await sql.connect(config);
+
+    const store = await pool
+      .request()
+      .input("id", req.user.user_id)
+      .query("SELECT * FROM Stores WHERE ManagerID = @id");
+
+    if (store.recordset.length === 0) throw "No stores found";
+    if (store.recordset[0].StoreID !== Number(warehouseID))
+      throw "You do not have permission for other stores";
+
+    let b_id = store.recordset[0].BusinessID;
+    const prods = await pool
+      .request()
+      .input("id", b_id)
+      .query("SELECT * FROM Products WHERE BusinessID = @id");
+    if (prods.recordset.length === 0)
+      throw "There are no products registered with the business";
+
+    let flag = false;
+    for (let i = 0; !flag && i < prods.recordset.length; i++) {
+      if (prods.recordset[i].ProductID === Number(productID)) {
+        flag = true;
+      }
+    }
+    if (!flag) throw "Product is not included in the business";
+
+    const quantity_in_stock = await pool
+      .request()
+      .input("StoreID", sql.Int, Sid)
+      .input("ProductID", sql.Int, Pid)
+      .query(
+        "SELECT * FROM Inventory WHERE StoreID = @StoreID AND ProductID = @ProductID"
+      );
+
+    if (quantity_in_stock.recordset.length === 0)
+      throw "Product is not in stock";
+
+    if (quantity_in_stock.recordset[0].Quantity < quantity)
+      throw "Not enough stock";
+
+    const result = await pool
+      .request()
+      .input("StoreID", sql.Int, Sid)
+      .input("ProductID", sql.Int, Pid)
+      .input("Quantity", sql.Int, quantity)
+      .execute("Sale");
+    res.json(result.recordset);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ err });
+  }
+});
 // UpdateManagers
 function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
