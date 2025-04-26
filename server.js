@@ -133,6 +133,7 @@ const auth_man = (req, res, next) => {
 const app = express();
 const PORT = 5000;
 
+
 app.use(
   cors({
     origin: "http://localhost:5173", // adjust this if your frontend runs on a different port
@@ -1490,10 +1491,10 @@ const email_req = express.urlencoded({
 app.put("/manager/ChangeEmail", email_req, auth_man, async (req, res) => {
   try {
     const ManagerID = req.user.user_id;
-    const { NewVal } = req.body;
+    const { email: NewVal } = req.body;
     const ColumnName = "email";
     if (!isValidEmail(NewVal)) {
-      return res.status(400).json({ error: "Invalid email format." });
+      return res.status(400).json({ status: "error", message: "Invalid email format." });
     }
 
     const pool = await sql.connect(config);
@@ -1504,14 +1505,20 @@ app.put("/manager/ChangeEmail", email_req, auth_man, async (req, res) => {
       .input("ManagerID", sql.Int, ManagerID)
       .execute("UpdateManagers");
 
-    if (result.recordset[0]["RetCode"] === 0)
-      result.recordset[0]["message"] = "Successfully updated Email";
-    else result.recordset[0]["message"] = "Could not update email.";
-
-    res.json(result.recordset);
+    if (result.recordset[0]["RetCode"] === 0) {
+      return res.status(200).json({
+        status: "success",
+        message: "Email updated successfully"
+      });
+    } else {
+      return res.status(400).json({
+        status: "error",
+        message: result.recordset[0]["ERRNO"] || "Could not update email."
+      });
+    }
   } catch (err) {
     console.log(err);
-    res.status(500).json({ err });
+    res.status(500).json({ status: "error", message: "Internal server error", details: err.message });
   }
 });
 
@@ -1886,6 +1893,190 @@ app.put("/owner/sto_manager/:Sid/:Mid", auth_owner, async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json({ err });
+  }
+});
+// Get Manager Details
+app.get("/manager/manager_details", auth_both, async (req, res) => {
+  try {
+    const pool = await sql.connect(config);
+    const user_id = req.user.user_id;
+    const role = req.user.role;
+
+    if (role === "manager") {
+      // For managers - return only their own details
+      const result = await pool
+        .request()
+        .input("managerID", sql.Int, user_id)
+        .execute("Get_Manager_Details");
+
+      if (!result.recordset || result.recordset.length === 0) {
+        return res.status(404).json({ 
+          status: "error",
+          message: "Manager details not found" 
+        });
+      }
+
+      return res.status(200).json({
+        status: "success",
+        data: result.recordset[0]
+      });
+
+    } else if (role === "owner") {
+      // For owners - get their business ID first
+      const businessResult = await pool
+        .request()
+        .input("id", sql.Int, user_id)
+        .query("SELECT BusinessID FROM Business WHERE OwnerID = @id");
+
+      if (!businessResult.recordset || businessResult.recordset.length === 0) {
+        return res.status(404).json({
+          status: "error",
+          message: "Business not found for owner"
+        });
+      }
+
+      const businessId = businessResult.recordset[0].BusinessID;
+
+      // Get all managers for this business
+      const managersResult = await pool
+        .request()
+        .input("businessID", sql.Int, businessId)
+        .query(`
+          SELECT 
+            M.managerID, M.name, M.email, M.username, M.businessID,
+            B.BusinessName,
+            S.StoreID, S.StoreName
+          FROM Managers M
+          LEFT JOIN Business B ON M.businessID = B.BusinessID
+          LEFT JOIN Stores S ON M.managerID = S.ManagerID
+          WHERE M.businessID = @businessID
+        `);
+
+      return res.status(200).json({
+        status: "success",
+        data: managersResult.recordset
+      });
+    }
+
+  } catch (err) {
+    console.error("Error fetching manager details:", err);
+    res.status(500).json({ 
+      status: "error",
+      message: "An error occurred while fetching manager details"
+    });
+  }
+});
+
+/**
+ * @route GET /owners/owner_details
+ * @description Retrieves detailed information about the authenticated owner and their business
+ * @access Private (Owner only)
+ * @returns {Object} Owner details including personal information and business details
+ */
+app.get("/owners/owner_details", auth_owner, async (req, res) => {
+  try {
+    const ownerId = req.user.user_id;
+    const pool = await sql.connect(config);
+
+    // Execute the Owner_details stored procedure
+    const result = await pool
+      .request()
+      .input("OwnerID", sql.Int, ownerId)
+      .execute("Owner_details");
+
+    // Check if we got a valid response
+    if (!result.recordset || result.recordset.length === 0) {
+      return res.status(404).json({
+        status: "error",
+        message: "Owner details not found"
+      });
+    }
+
+    // Check for any error codes from the stored procedure
+    if (result.recordset.length > 1 && result.recordset[1].RetCode === -1) {
+      return res.status(400).json({
+        status: "error",
+        message: result.recordset[1].ERRNO || "Error retrieving owner details"
+      });
+    }
+
+    // Return the owner details
+    return res.status(200).json({
+      status: "success",
+      data: result.recordset[0]
+    });
+
+  } catch (err) {
+    console.error("Error in /owners/owner_details:", err);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      details: err.message
+    });
+  }
+});
+
+/**
+ * @route PUT /owners/update_email
+ * @description Updates the authenticated owner's email address
+ * @access Private (Owner only)
+ * @param {string} email - The new email address
+ * @returns {Object} Success/error response
+ */
+const email_update_parser = express.urlencoded({ extended: false, limit: 10000, parameterLimit: 1 });
+
+app.put("/owners/update_email", email_update_parser, auth_owner, async (req, res) => {
+  try {
+    const { email } = req.body;
+    const ownerId = req.user.user_id;
+
+    // Validate input
+    if (!email) {
+      return res.status(400).json({
+        status: "error",
+        message: "Email is required"
+      });
+    }
+
+    // Validate email format
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid email format"
+      });
+    }
+
+    const pool = await sql.connect(config);
+
+    // Execute the UpdateOwners stored procedure for email only
+    const result = await pool
+      .request()
+      .input("ColumnName", sql.VarChar(128), "email")
+      .input("NewVal", sql.VarChar(255), email)
+      .input("OwnerId", sql.Int, ownerId)
+      .execute("UpdateOwners");
+
+    // Check for error response from stored procedure
+    if (result.recordset.length > 0 && result.recordset[0].RetCode === -1) {
+      return res.status(400).json({
+        status: "error",
+        message: result.recordset[0].ERRNO || "Failed to update owner email"
+      });
+    }
+
+    // Return success response
+    return res.status(200).json({
+      status: "success",
+      message: "Owner email updated successfully"
+    });
+
+  } catch (err) {
+    console.error("Error in /owners/update_email:", err);
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+      details: err.message
+    });
   }
 });
 
