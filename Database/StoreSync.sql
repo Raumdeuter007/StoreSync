@@ -302,6 +302,7 @@ BEGIN
 END;
 GO
 
+GO
 --UPDATE QUERIES
 -- Add Sale in Inventory
 CREATE PROCEDURE Sale @StoreID INT, @ProductID INT, @Quantity INT
@@ -319,121 +320,121 @@ END;
 GO
 -- 1. Update Owner Details
 
---GO
---CREATE PROCEDURE UpdateOwners
---    @ColumnName VARCHAR(128),
---    @NewVal VARCHAR(255),
---    @OwnerId INT
---AS
---BEGIN
---    SET NOCOUNT ON;
+GO
+CREATE PROCEDURE UpdateOwners
+   @ColumnName VARCHAR(128),
+   @NewVal VARCHAR(255),
+   @OwnerId INT
+AS
+BEGIN
+   SET NOCOUNT ON;
 
---    DECLARE @SQL NVARCHAR(MAX);
---    DECLARE @RetCode INT = 0;
---    DECLARE @ERRNO NVARCHAR(4000) = NULL;
+   DECLARE @SQL NVARCHAR(MAX);
+   DECLARE @RetCode INT = 0;
+   DECLARE @ERRNO NVARCHAR(4000) = NULL;
 
---    -- Check for NULL parameters
---    IF @ColumnName IS NULL OR @OwnerId IS NULL
---    BEGIN
---        SET @RetCode = -1;
---        SET @ERRNO = 'NULL_PARAM';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---        RETURN;
---    END
+   -- Check for NULL parameters
+   IF @ColumnName IS NULL OR @OwnerId IS NULL
+   BEGIN
+       SET @RetCode = -1;
+       SET @ERRNO = 'NULL_PARAM';
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+       RETURN;
+   END
 
---    -- Check for NULL or empty NewVal (all columns NOT NULL)
---    IF @NewVal IS NULL OR @NewVal = ''
---    BEGIN
---        SET @RetCode = -1;
---        SET @ERRNO = 'INVALID_VAL: Value cannot be NULL or empty';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---        RETURN;
---    END
+   -- Check for NULL or empty NewVal (all columns NOT NULL)
+   IF @NewVal IS NULL OR @NewVal = ''
+   BEGIN
+       SET @RetCode = -1;
+       SET @ERRNO = 'INVALID_VAL: Value cannot be NULL or empty';
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+       RETURN;
+   END
 
---    -- Validate ColumnName
---    IF NOT EXISTS (
---        SELECT 1 
---        FROM sys.columns 
---        WHERE object_id = OBJECT_ID('Owners') 
---        AND name = @ColumnName
---    )
---    BEGIN
---        SET @RetCode = -1;
---        SET @ERRNO = 'INVALID_COLUMN: ' + @ColumnName;
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---        RETURN;
---    END
+   -- Validate ColumnName
+   IF NOT EXISTS (
+       SELECT 1 
+       FROM sys.columns 
+       WHERE object_id = OBJECT_ID('Owners') 
+       AND name = @ColumnName
+   )
+   BEGIN
+       SET @RetCode = -1;
+       SET @ERRNO = 'INVALID_COLUMN: ' + @ColumnName;
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+       RETURN;
+   END
 
---    -- Prevent updating IDENTITY column
---    IF @ColumnName = 'ownerID'
---    BEGIN
---        SET @RetCode = -1;
---        SET @ERRNO = 'IDENTITY_UPDATE: Cannot update ownerID';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---        RETURN;
---    END
+   -- Prevent updating IDENTITY column
+   IF @ColumnName = 'ownerID'
+   BEGIN
+       SET @RetCode = -1;
+       SET @ERRNO = 'IDENTITY_UPDATE: Cannot update ownerID';
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+       RETURN;
+   END
 
---    -- Check email constraint
---    IF @ColumnName = 'email' AND @NewVal NOT LIKE '%@%'
---    BEGIN
---        SET @RetCode = -1;
---        SET @ERRNO = 'EMAIL_FORMAT: Email must contain @';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---        RETURN;
---    END
+   -- Check email constraint
+   IF @ColumnName = 'email' AND @NewVal NOT LIKE '%@%'
+   BEGIN
+       SET @RetCode = -1;
+       SET @ERRNO = 'EMAIL_FORMAT: Email must contain @';
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+       RETURN;
+   END
 
---    -- Check uniqueness for email and username (excluding current row)
---    IF @ColumnName IN ('email', 'username')
---        AND EXISTS (
---            SELECT 1 
---            FROM Owners 
---            WHERE (@ColumnName = 'email' AND email = @NewVal)
---               OR (@ColumnName = 'username' AND username = @NewVal)
---            AND ownerID != @OwnerId
---        )
---    BEGIN
---        SET @RetCode = -1;
---        SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate ' + @ColumnName;
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---        RETURN;
---    END
+   -- Check uniqueness for email and username (excluding current row)
+   IF @ColumnName IN ('email', 'username')
+       AND EXISTS (
+           SELECT 1 
+           FROM Owners 
+           WHERE (@ColumnName = 'email' AND email = @NewVal)
+              OR (@ColumnName = 'username' AND username = @NewVal)
+           AND ownerID != @OwnerId
+       )
+   BEGIN
+       SET @RetCode = -1;
+       SET @ERRNO = 'UNIQUE_VIOLATION: Duplicate ' + @ColumnName;
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+       RETURN;
+   END
 
---    -- Check if OwnerId exists
---    IF NOT EXISTS (SELECT 1 FROM Owners WHERE ownerID = @OwnerId)
---    BEGIN
---        SET @RetCode = -1;
---        SET @ERRNO = 'NO_RECORD: OwnerID ' + CAST(@OwnerId AS VARCHAR(10)) + ' not found';
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---        RETURN;
---    END
+   -- Check if OwnerId exists
+   IF NOT EXISTS (SELECT 1 FROM Owners WHERE ownerID = @OwnerId)
+   BEGIN
+       SET @RetCode = -1;
+       SET @ERRNO = 'NO_RECORD: OwnerID ' + CAST(@OwnerId AS VARCHAR(10)) + ' not found';
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+       RETURN;
+   END
 
---    BEGIN TRY
---        -- Build and execute dynamic SQL
---        SET @SQL = 'UPDATE Owners SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE ownerID = @OwnerId';
---        EXEC sp_executesql @SQL, 
---            N'@NewVal VARCHAR(255), @OwnerId INT', 
---            @NewVal, @OwnerId;
+   BEGIN TRY
+       -- Build and execute dynamic SQL
+       SET @SQL = 'UPDATE Owners SET ' + QUOTENAME(@ColumnName) + ' = @NewVal WHERE ownerID = @OwnerId';
+       EXEC sp_executesql @SQL, 
+           N'@NewVal VARCHAR(255), @OwnerId INT', 
+           @NewVal, @OwnerId;
 
---        -- Success response
---        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---   END TRY
+       -- Success response
+       SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+  END TRY
 
---   BEGIN CATCH
---    SET @RetCode = -1;
---    SET @ERRNO = 'RUNTIME_ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
---    SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
---  END CATCH
+  BEGIN CATCH
+   SET @RetCode = -1;
+   SET @ERRNO = 'RUNTIME_ERROR_' + CAST(ERROR_NUMBER() AS NVARCHAR(10)) + ': ' + ERROR_MESSAGE();
+   SELECT @RetCode AS RetCode, @ERRNO AS ERRNO;
+ END CATCH
 
---END;
---GO
+END;
+GO
 
---select * from Owners;
+select * from Owners;
 
 --EXEC UpdateOwners 'name','hellina','10'
 
 
 ---- 2. Update Manager Details
---GO
+GO
 CREATE PROCEDURE UpdateManagers
     @ColumnName VARCHAR(128),
     @NewVal VARCHAR(255), -- Most columns are VARCHAR(255), INT handled below
@@ -1673,6 +1674,76 @@ GO
 --	UPDATE Managers SET assignedStore = NULL WHERE ManagerID = @ManagerID;
 --END;
 --GO
+
+-- Get Manager Details
+CREATE PROCEDURE Get_Manager_Details 
+    @managerID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Input validation
+    IF @managerID IS NULL OR @managerID <= 0
+    BEGIN
+        RAISERROR('Invalid manager ID provided', 16, 1);
+        RETURN;
+    END
+
+    -- Check if manager exists
+    IF NOT EXISTS (SELECT 1 FROM Managers WHERE managerID = @managerID)
+    BEGIN
+        RAISERROR('Manager not found', 16, 1);
+        RETURN;
+    END
+
+    -- Select only necessary fields for security and performance
+    SELECT 
+        M.managerID,
+        M.name,
+        M.email,
+        M.username,
+        M.businessID,
+        B.BusinessName,
+        S.StoreID,
+        S.StoreName
+    FROM Managers AS M
+    LEFT JOIN Business AS B ON M.businessID = B.BusinessID
+    LEFT JOIN Stores AS S ON M.managerID = S.ManagerID
+    WHERE M.managerID = @managerID;
+END
+
+GO
+ -- Get Owner Details with Business Information
+CREATE PROCEDURE Owner_details @OwnerID INT
+AS
+BEGIN
+    DECLARE @RetCode INT = 0   -- Return value: 0 = success, -1 = failure
+    DECLARE @ERRNO NVARCHAR(4000) = NULL
+
+    BEGIN TRY
+        -- Get owner details along with their business information
+        SELECT 
+            O.ownerID,
+            O.name,
+            O.email,
+            O.username,
+            B.BusinessName,
+            B.HQAddress
+        FROM Owners O
+        INNER JOIN Business B ON O.ownerID = B.OwnerID
+        WHERE O.ownerID = @OwnerID;
+
+        -- Return success response
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO
+    END TRY
+    BEGIN CATCH
+        SET @RetCode = -1
+        SET @ERRNO = ERROR_MESSAGE()
+        SELECT @RetCode AS RetCode, @ERRNO AS ERRNO
+    END CATCH
+END
+GO
+
 USE InventoryManagementSystem
 GO
 -- User Accounts and Access
@@ -1695,3 +1766,5 @@ SELECT * FROM StockRequests;
 SELECT * FROM NotificationType;
 SELECT * FROM read_status;
 SELECT * FROM Notifications;
+
+
